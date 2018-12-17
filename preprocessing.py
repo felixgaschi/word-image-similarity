@@ -79,7 +79,7 @@ while i < len(words):
     res = image[y1:y2, x1:x2]
 
     im = Image.fromarray(res)
-    im.save(os.path.join(args.out, "word-{:06d}.png".format(i)))
+    im.save(os.path.join(args.out, "word-{:06d}.png".format(len(new_words))))
 
     if j == len(boxes) - 1: 
         boxes = []
