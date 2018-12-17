@@ -13,9 +13,9 @@ from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description='Word Image Similarity script for constructing ground truth')
 
-parser.add_argument("--data", type=str, default="../similarity-dataset", metavar="I",
+parser.add_argument("--data", type=str, default="../preprocessed", metavar="I",
                     help="directory for the data")
-parser.add_argument("--limit", type=int, default=2000000, metavar="L",
+parser.add_argument("--limit", type=int, default=500000, metavar="L",
                     help="limit number of pairs")
 
 args = parser.parse_args()
@@ -34,7 +34,7 @@ with open(os.path.join(args.data, "true-pairs.csv"), "w") as f:
     f.write("")
 
 nb_true = 0
-pbar = tqdm(total=limit // 2)
+pbar = tqdm(total=limit)
 get_out = False
 for i, w in enumerate(words):
     for j, w2 in enumerate(words):
@@ -48,10 +48,8 @@ for i, w in enumerate(words):
                 get_out = True
                 break
         if get_out:
-            pbar.close()
             break
 if not get_out:
-    pbar.close()
 
 nb_false = limit - nb_true
 
@@ -59,7 +57,6 @@ with open(os.path.join(args.data, "false-pairs.csv"), "w") as f:
     f.write("")
 
 i, j, k = 0, 0, 0
-pbarfalse = tqdm(total=nb_false)
 while i < nb_false:
     
     if k == len(words):
@@ -71,11 +68,11 @@ while i < nb_false:
     
     if words[j] != words[k]:
         i += 1
-        pbarfalse.update(1)
+        pbar.update(1)
         with open(os.path.join(args.data, "false-pairs.csv"), "a") as f:
             f.write("{:06d},{:06d}\n".format(j + 1, k + 1))
     
     k += 1
-pbarfalse.close()
+pbar.close()
 
 print("Number of true pairs selected: ", nb_true)
