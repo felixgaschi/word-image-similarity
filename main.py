@@ -22,9 +22,10 @@ parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
-parser.add_argument('--experiment', type=str, default='..results/experiment', metavar='E',
+parser.add_argument('--experiment', type=str, default='../results/experiment', metavar='E',
                     help='folder where experiment outputs are located.')
 parser.add_argument('--nb-workers', type=int, default=1)
+parser.add_argument('--estimator-type', type=str, default="class")
 parser.add_argument('--gpu', type=int, default=0)
 
 args = parser.parse_args()
@@ -32,9 +33,12 @@ args = parser.parse_args()
 use_cuda = torch.cuda.is_available()
 
 
-from models import TwoChannelsClassifier
+from models import TwoChannelsClassifier, TwoChannelsRegressor
 
-model = TwoChannelsClassifier()
+if args.estimator_type == "class":
+    model = TwoChannelsClassifier()
+else:
+    model = TwoChannelsRegressor()
 
 from data import train_transform, validation_transform
 
@@ -66,11 +70,19 @@ def train(epoch):
             data, target = data.cuda(args.gpu), target.cuda(args.gpu)
         optimizer.zero_grad()
         output = model(data)
-        criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
+        if args.estimator_type == "class":
+            criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
+        else:
+            criterion = torch.nn.MSELoss(reduction="elementwise_mean")
+            target = target.float()
+            output = output[:,0]
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-        pred = output.data.max(1, keepdim=True)[1]
+        if args.estimator_type == "class":
+            pred = output.data.max(1, keepdim=True)[1]
+        else:
+            pred = output.data.round()
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -93,10 +105,18 @@ def validation():
                 data, target = data.cuda(args.gpu), target.cuda(args.gpu)
             output = model(data)
             # sum up batch loss
-            criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
+            if args.estimator_type == "class":
+                criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
+            else:
+                criterion = torch.nn.MSELoss(reduction="elementwise_mean")
+                target = target.float()
+                output = output[:,0]
             validation_loss += criterion(output, target).data.item()
             # get the index of the max log-probability
-            pred = output.data.max(1, keepdim=True)[1]
+            if args.estimator_type == "class":
+                pred = output.data.max(1, keepdim=True)[1]
+            else:
+                pred = output.data.round()
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
         validation_loss /= len(val_loader.dataset)

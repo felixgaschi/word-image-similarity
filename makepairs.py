@@ -1,10 +1,10 @@
 """
 file for constructing ground truth for similarity
 build a csv with true pairs (pair of different handwritting of same word)
-build another csv file with three columns:
+and a csv with false pairs. 
+Each have two columns:
 - id1: id of first word
 - id2: id of second word
-- similarity: similarity score (1 if same word, 0 otherwise)
 """
 
 import argparse
