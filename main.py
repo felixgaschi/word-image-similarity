@@ -14,9 +14,9 @@ parser.add_argument('--batch-size', type=int, default=32, metavar='B',
                     help='input batch size for training (default: 32)')
 parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--lr', type=float, default=0.1, metavar='LR',
+parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                     help='learning rate (default: 0.01)')
-parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
+parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum (default: 0.5)')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
@@ -26,19 +26,27 @@ parser.add_argument('--experiment', type=str, default='../results/experiment', m
                     help='folder where experiment outputs are located.')
 parser.add_argument('--nb-workers', type=int, default=1)
 parser.add_argument('--estimator-type', type=str, default="class")
+parser.add_argument('--model', type=str, default="siamese")
 parser.add_argument('--gpu', type=int, default=0)
+parser.add_argument('--optimizer', type=str, default="SGD")
 
 args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
 
 
-from models import TwoChannelsClassifier, TwoChannelsRegressor
+from models import TwoChannelsClassifier, TwoChannelsRegressor, SiameseRegressor, SiameseClassifier
 
 if args.estimator_type == "class":
-    model = TwoChannelsClassifier()
-else:
-    model = TwoChannelsRegressor()
+    if args.model == "2channels":
+        model = TwoChannelsClassifier()
+    elif args.model == "siamese":
+        model = SiameseClassifier()
+elif args.estimator_type == "regressor":
+    if args.model == "2channels":
+        model = TwoChannelsRegressor()
+    elif args.model == "siamese":
+        model = SiameseRegressor()
 
 from data import train_transform, validation_transform
 
@@ -59,7 +67,10 @@ if use_cuda:
 else:
     print('Using CPU')
 
-optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0002)
+if args.optimizer == "SGD" :
+    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0002)
+elif args.optimizer == "Adam" :
+    optimizer = optim.Adam(model.parameters(), lr=10**-5)
 
 def train(epoch):
 
