@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description='Word Image Similarity script for c
 parser.add_argument("--data", type=str, default="../preprocessed", metavar="I",
                     help="directory for the data")
 parser.add_argument("--out", type=str, default="../pair-dataset", metavar="O")
-parser.add_argument("--limit", type=int, default=None)
+parser.add_argument("--limit", type=int, default=50000)
 parser.add_argument("--ratio", type=int, default=None)
 
 args = parser.parse_args()
@@ -51,7 +51,7 @@ if args.limit is not None:
     n_true_train = int(ratio * n_true)
     n_false_train = int(ratio * n_false)
 
-pbar = tqdm(total=n_true + n_false)
+pbar = tqdm(total=n_true + n_false, position = 0)
 for i, row in enumerate(read_csv(os.path.join(args.data, "true-pairs.csv"))):
 
     if i == n_true:

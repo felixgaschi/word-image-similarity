@@ -35,7 +35,7 @@ boxFnames = [f[:-4] + "_boxes.txt" for f in imageFnames]
 # Get the list of words
 words = []
 
-with open(os.path.join(args.input, "annotations.txt"), "r") as f:
+with open(os.path.join(args.input, "annotations.txt"), "r", encoding = "iso-8859-1") as f:
     words = f.readlines()
 
 words = [w.strip() for w in words]
@@ -52,7 +52,7 @@ if not os.path.exists(args.out):
 image = None
 new_words = []
 
-pbar = tqdm(total=len(words))
+pbar = tqdm(total=len(words), position = 0)
 
 while i < len(words):
     pbar.update(1)

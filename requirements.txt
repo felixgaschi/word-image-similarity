@@ -1,4 +1,4 @@
 torch
 numpy
-PIL
+Pillow
 scipy

@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(description='Word Image Similarity script for c
 
 parser.add_argument("--data", type=str, default="../preprocessed", metavar="I",
                     help="directory for the data")
-parser.add_argument("--limit", type=int, default=500000, metavar="L",
+parser.add_argument("--limit", type=int, default=50000, metavar="L",
                     help="limit number of pairs")
 
 args = parser.parse_args()
@@ -34,7 +34,7 @@ with open(os.path.join(args.data, "true-pairs.csv"), "w") as f:
     f.write("")
 
 nb_true = 0
-pbar = tqdm(total=limit)
+pbar = tqdm(total=limit, position = 0)
 get_out = False
 for i, w in enumerate(words):
     for j, w2 in enumerate(words):
@@ -49,7 +49,7 @@ for i, w in enumerate(words):
                 break
         if get_out:
             break
-if not get_out:
+#if not get_out:
 
 nb_false = limit - nb_true
 
