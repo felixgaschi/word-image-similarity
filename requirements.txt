@@ -2,3 +2,5 @@ torch
 numpy
 Pillow
 scipy
+tqdm
+torchvision

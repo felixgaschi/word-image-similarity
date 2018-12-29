@@ -47,9 +47,10 @@ for i in read_csv(os.path.join(args.data, "false-pairs.csv")):
 if args.limit is not None:
     n_true = min(args.limit, n_true)
     n_false = min(args.limit, n_false)
-    ratio = 0.70 if args.ratio is None else args.ratio
-    n_true_train = int(ratio * n_true)
-    n_false_train = int(ratio * n_false)
+
+ratio = 0.70 if args.ratio is None else args.ratio
+n_true_train = int(ratio * n_true)
+n_false_train = int(ratio * n_false)
 
 pbar = tqdm(total=n_true + n_false, position = 0)
 for i, row in enumerate(read_csv(os.path.join(args.data, "true-pairs.csv"))):
