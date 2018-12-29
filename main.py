@@ -35,18 +35,22 @@ args = parser.parse_args()
 use_cuda = torch.cuda.is_available()
 
 
-from models import TwoChannelsClassifier, TwoChannelsRegressor, SiameseRegressor, SiameseClassifier
+from models import TwoChannelsClassifier, TwoChannelsRegressor, SiameseRegressor, SiameseClassifier, PseudoSiameseClassifier, PseudoSiameseRegressor
 
 if args.estimator_type == "class":
     if args.model == "2channels":
         model = TwoChannelsClassifier()
     elif args.model == "siamese":
         model = SiameseClassifier()
+    elif args.model == "pseudosiamese":
+        model = PseudoSiameseClassifier()
 elif args.estimator_type == "regressor":
     if args.model == "2channels":
         model = TwoChannelsRegressor()
     elif args.model == "siamese":
         model = SiameseRegressor()
+    elif args.model == "pseudosiamese":
+        model = PseudoSiameseRegressor()
 
 from data import train_transform, validation_transform
 
