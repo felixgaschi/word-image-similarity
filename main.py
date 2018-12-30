@@ -52,18 +52,24 @@ elif args.estimator_type == "regressor":
     elif args.model == "pseudosiamese":
         model = PseudoSiameseRegressor()
 
-from data import train_transform, validation_transform
+import data
+
 
 train_loader = torch.utils.data.DataLoader(
-    datasets.ImageFolder(args.data + '/train',
-                         transform=train_transform()),
+    data.WordPairPickle("../preprocessed", "eval.pk",
+                        transform_after=data.train_transform_after, 
+                        transform_before=data.train_transform_before,
+                        lim=14000),
     batch_size=args.batch_size, shuffle=True, num_workers=args.nb_workers
 )
 
 val_loader = torch.utils.data.DataLoader(
-    datasets.ImageFolder(args.data + '/eval',
-                         transform=validation_transform()),
-    batch_size=args.batch_size, shuffle=False, num_workers=args.nb_workers)
+    data.WordPairPickle("../preprocessed", "eval.pk",
+                        transform_after=data.validation_transform_after, 
+                        transform_before=data.validation_transform_before,
+                        lim=7800),
+    batch_size=args.batch_size, shuffle=False, num_workers=args.nb_workers
+)
 
 if use_cuda:
     print('Using GPU')
