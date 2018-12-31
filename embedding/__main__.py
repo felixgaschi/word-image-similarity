@@ -24,14 +24,25 @@ parser.add_argument("--model", type=str, default="resnet50")
 parser.add_argument("--layer", type=int, default=44)
 parser.add_argument("--channel", type=int, default=212)
 parser.add_argument("--factor", type=int, default=20)
+parser.add_argument("--gpu", type=int, default=0)
+parser.add_argument("--nb-workers", type=int, default=1)
 
 args = parser.parse_args()
+
+use_cuda = torch.cuda.is_available()
+
 
 if args.model == "resnet50":
     model = resnet50
     layer = get_layer(model, args.layer)[0]
 else:
     raise ValueError("{} is a not a suitable value for option model".format(args.model))
+
+if use_cuda:
+    print('Using GPU')
+    model.cuda(args.gpu)
+else:
+    print('Using CPU')
 
 images = [f for f in os.listdir(args.input) if f[-4:] == ".png"]
 others = [os.path.join(args.input, f) for f in os.listdir(args.input) if f[-4:] != ".png"]
