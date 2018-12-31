@@ -12,6 +12,7 @@ import numpy as np
 import torch
 from shutil import copyfile
 from tqdm import tqdm
+from multiprocessing import Pool
 import torchvision.transforms as transforms
 
 parser = argparse.ArgumentParser(description='Generates a dataset with a feature map instead of the word image')
@@ -45,13 +46,17 @@ else:
     print('Using CPU')
 
 images = [f for f in os.listdir(args.input) if f[-4:] == ".png"]
-others = [os.path.join(args.input, f) for f in os.listdir(args.input) if f[-4:] != ".png"]
+others = [f for f in os.listdir(args.input) if f[-4:] != ".png"]
 
 if not os.path.exists(args.output):
     os.makedirs(args.output)
 
-for fname in tqdm(images):
 
+pbar = tqdm(total=len(images))
+def update(*a):
+    pbar.update()
+
+def export_embedding(fname):
     original = Image.open(os.path.join(args.input, fname))
 
     original = transforms.Resize((int(40 * args.factor), int(100 * args.factor)))(original)
@@ -62,6 +67,17 @@ for fname in tqdm(images):
     new = transforms.ToPILImage(mode="L")(embedding)
 
     new.save(os.path.join(args.output, fname))
+    print("export done")
+
+pool = Pool(args.nb_workers)
+
+for fname in images:
+    pool.apply_async(export_embedding, args=(fname,), callback=update)
+    
+pool.close()
+pool.join()
+pbar.close()
+
 
 for o in others:
-    copyfile(o, args.output)
+    copyfile(os.path.join(args.input, o), os.path.join(args.output, o))
