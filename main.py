@@ -157,7 +157,10 @@ if args.save:
     if args.name is not None:
         dirName += "-" + args.name
     os.makedirs(os.path.join(args.experiment, dirName))
-
+    with open(os.path.join(args.experiment, dirName, "info"), "w") as f:
+        dict = vars(args)
+        res = "\n".join(["{}: {}".format(e, dict[e]) for e in dict.keys()]) + "\n"
+        f.write(res)
 
 for epoch in range(1, args.epochs + 1):
     t = time()
