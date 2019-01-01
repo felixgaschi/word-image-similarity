@@ -62,7 +62,10 @@ class WordPairPickle(data.Dataset):
         with open(self.fileName, "rb") as f:
             data = pk.load(f)
         
-        self.data = data[:lim]
+        if lim is not None:
+            self.data = data[:lim]
+        else:
+            self.data = data
 
     def __getitem__(self, index):
         (a, b), target = self.data[index]

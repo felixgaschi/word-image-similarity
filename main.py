@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 from torchvision import datasets
 from time import time
+from tqdm import tqdm
 
 
 
@@ -20,17 +21,17 @@ parser.add_argument('--momentum', type=float, default=0.9, metavar='M',
                     help='SGD momentum (default: 0.5)')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
-parser.add_argument('--log-interval', type=int, default=100, metavar='N',
-                    help='how many batches to wait before logging training status')
-parser.add_argument('--experiment', type=str, default='../results/experiment', metavar='E',
+parser.add_argument('--experiment', type=str, default='../results/', metavar='E',
                     help='folder where experiment outputs are located.')
+parser.add_argument('--name', type=str, default=None)
+parser.add_argument('--save', type=bool, default=False)
 parser.add_argument('--nb-workers', type=int, default=1)
 parser.add_argument('--estimator-type', type=str, default="class")
 parser.add_argument('--model', type=str, default="siamese")
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--optimizer', type=str, default="SGD")
-parser.add_argument('--nb-train', type=int, default=35000)
-parser.add_argument('--nb-eval', type=int, default=15000)
+parser.add_argument('--nb-train', type=int, default=None)
+parser.add_argument('--nb-eval', type=int, default=None)
 
 args = parser.parse_args()
 
@@ -88,15 +89,15 @@ def train(epoch):
 
     model.train()
     correct = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
+    for batch_idx, (data, target) in tqdm(enumerate(train_loader), total=len(train_loader)):
         if use_cuda:
             data, target = data.cuda(args.gpu), target.cuda(args.gpu)
         optimizer.zero_grad()
         output = model(data)
         if args.estimator_type == "class":
-            criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
+            criterion = torch.nn.CrossEntropyLoss(reduction='mean')
         else:
-            criterion = torch.nn.MSELoss(reduction="elementwise_mean")
+            criterion = torch.nn.MSELoss(reduction="mean")
             target = target.float()
             output = output[:,0]
         loss = criterion(output, target)
@@ -107,10 +108,6 @@ def train(epoch):
         else:
             pred = output.data.round()
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
-        if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.data.item()))
     
     print('\nTraining score: {}/{} ({:.0f}%)\n'.format(
         correct, len(train_loader.dataset), 100. * correct / len(train_loader.dataset)
@@ -123,15 +120,15 @@ def validation():
         model.eval()
         validation_loss = 0
         correct = 0
-        for data, target in val_loader:
+        for data, target in tqdm(val_loader):
             if use_cuda:
                 data, target = data.cuda(args.gpu), target.cuda(args.gpu)
             output = model(data)
             # sum up batch loss
             if args.estimator_type == "class":
-                criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
+                criterion = torch.nn.CrossEntropyLoss(reduction='mean')
             else:
-                criterion = torch.nn.MSELoss(reduction="elementwise_mean")
+                criterion = torch.nn.MSELoss(reduction="mean")
                 target = target.float()
                 output = output[:,0]
             validation_loss += criterion(output, target).data.item()
@@ -149,23 +146,29 @@ def validation():
     
         return 100. * correct / len(val_loader.dataset)
 
-times = []
-train_score = []
-test_score = []
-
-if not os.path.exists(args.experiment):
-    os.makedirs(args.experiment)
+if args.save:
+    if not os.path.exists(args.experiment):
+        os.makedirs(args.experiment)
+        dirName = "exp-00000"
+    else:
+        prefixes = [int(d[4:9]) for d in os.listdir(args.experiment) if d[:4] == "exp-"]
+        maxi = 0 if len(prefixes) == 0 else max(prefixes)
+        dirName = "exp-{:05d}".format(maxi + 1)
+    if args.name is not None:
+        dirName += "-" + args.name
+    os.makedirs(os.path.join(args.experiment, dirName))
 
 
 for epoch in range(1, args.epochs + 1):
-    try:
-        t = time()
-        train_score.append(train(epoch))
-        test_score.append(validation())
-        model_file = args.experiment + '/model_' + str(epoch) + '.pth'
+    t = time()
+    train_score = train(epoch)
+    test_score = validation()
+    if args.save:
+        model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
         torch.save(model.state_dict(), model_file)
         print('\nSaved model to ' + model_file)
-        times.append(time() - t)
-        print("Elapsed time: ", times[-1])
-    except KeyboardInterrupt:
-        break
+    elapsed_time = time() - t
+    if args.save:
+        with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
+            f.write("{:f},{:f},{:.2f}\n".format(train_score, test_score, elapsed_time))
+    print("Elapsed time: ", elapsed_time)
