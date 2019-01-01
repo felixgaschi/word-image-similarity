@@ -29,6 +29,8 @@ parser.add_argument('--estimator-type', type=str, default="class")
 parser.add_argument('--model', type=str, default="siamese")
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--optimizer', type=str, default="SGD")
+parser.add_argument('--nb-train', type=int, default=35000)
+parser.add_argument('--nb-eval', type=int, default=15000)
 
 args = parser.parse_args()
 
@@ -56,10 +58,10 @@ import data
 
 
 train_loader = torch.utils.data.DataLoader(
-    data.WordPairPickle("../preprocessed", "eval.pk",
+    data.WordPairPickle("../preprocessed", "train.pk",
                         transform_after=data.train_transform_after, 
                         transform_before=data.train_transform_before,
-                        lim=14000),
+                        lim=args.nb_train),
     batch_size=args.batch_size, shuffle=True, num_workers=args.nb_workers
 )
 
@@ -67,7 +69,7 @@ val_loader = torch.utils.data.DataLoader(
     data.WordPairPickle("../preprocessed", "eval.pk",
                         transform_after=data.validation_transform_after, 
                         transform_before=data.validation_transform_before,
-                        lim=7800),
+                        lim=args.nb_eval),
     batch_size=args.batch_size, shuffle=False, num_workers=args.nb_workers
 )
 
