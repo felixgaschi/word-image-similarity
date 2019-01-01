@@ -5,6 +5,7 @@ from PIL import Image
 import os
 from tqdm import tqdm
 import pickle as pk
+import numpy as np
 
 def keep2chan(x):
     return x[:2,:,:]
@@ -12,6 +13,8 @@ def keep2chan(x):
 def train_transform():
     return transforms.Compose([
         transforms.ToTensor(),
+        transforms.Pad(np.random.randint(-10,11, size=2)),
+        transforms.CenterCrop(size=(100,40)),
         transforms.Lambda(keep2chan),
         transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
     ])
@@ -19,6 +22,8 @@ def train_transform():
 def validation_transform():
     return transforms.Compose([
         transforms.ToTensor(),
+        transforms.Pad(np.random.randint(-10,11, size=2)),
+        transforms.CenterCrop(size=(100,40)),
         transforms.Lambda(keep2chan),
         transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
     ])
