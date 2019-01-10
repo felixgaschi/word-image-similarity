@@ -5,6 +5,7 @@ import torch.optim as optim
 from torchvision import datasets
 from time import time
 from tqdm import tqdm
+import numpy as np
 
 
 
@@ -58,19 +59,25 @@ elif args.estimator_type == "regressor":
 import data
 
 
+loader_controller = data.ManuallyBalancedController(
+    "../preprocessed", 
+    transform_eval_before=data.validation_transform_before,
+    transform_eval_after=data.validation_transform_after,
+    transform_before=data.train_transform_before,
+    transform_after=data.train_transform_after,
+    transform_true_before=None,
+    nb_words_train=args.nb_train,
+    nb_words_val=args.nb_eval,
+    verbose=1
+)
+
 train_loader = torch.utils.data.DataLoader(
-    data.WordPairPickle("../preprocessed", "train.pk",
-                        transform_after=data.train_transform_after, 
-                        transform_before=data.train_transform_before,
-                        lim=args.nb_train),
+    loader_controller.training_set,
     batch_size=args.batch_size, shuffle=True, num_workers=args.nb_workers
 )
 
 val_loader = torch.utils.data.DataLoader(
-    data.WordPairPickle("../preprocessed", "eval.pk",
-                        transform_after=data.validation_transform_after, 
-                        transform_before=data.validation_transform_before,
-                        lim=args.nb_eval),
+    loader_controller.evaluation_set,
     batch_size=args.batch_size, shuffle=False, num_workers=args.nb_workers
 )
 
@@ -86,18 +93,20 @@ elif args.optimizer == "Adam" :
     optimizer = optim.Adam(model.parameters(), lr=10**-5)
 
 def train(epoch):
+    retrieved = {}
+    relevantAndRetrieved = {}
 
     model.train()
     correct = 0
-    for batch_idx, (data, target) in tqdm(enumerate(train_loader), total=len(train_loader)):
+    for batch_idx, (data, target, indices) in tqdm(enumerate(train_loader), total=len(train_loader)):
         if use_cuda:
             data, target = data.cuda(args.gpu), target.cuda(args.gpu)
         optimizer.zero_grad()
         output = model(data)
         if args.estimator_type == "class":
-            criterion = torch.nn.CrossEntropyLoss(reduction='mean')
+            criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
         else:
-            criterion = torch.nn.MSELoss(reduction="mean")
+            criterion = torch.nn.MSELoss(reduction="elementwise_mean")
             target = target.float()
             output = output[:,0]
         loss = criterion(output, target)
@@ -108,27 +117,46 @@ def train(epoch):
         else:
             pred = output.data.round()
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+        for j in range(indices.size(0)):
+            ref = int(indices[j, 0])
+            if ref not in retrieved.keys():
+                retrieved[ref] = 0
+            if ref not in relevantAndRetrieved.keys():
+                relevantAndRetrieved[ref] = 0
+            other = int(indices[j, 1])
+
+            if pred[j].cpu().item() == 1:
+                retrieved[ref] += 1
+            if pred[j].cpu().item() == 1 and target[j].cpu().item() == 1:
+                relevantAndRetrieved[ref] += 1
     
-    print('\nTraining score: {}/{} ({:.0f}%)\n'.format(
-        correct, len(train_loader.dataset), 100. * correct / len(train_loader.dataset)
+    scores = [relevantAndRetrieved[i] * 1. / retrieved[i] for i in retrieved.keys() if retrieved[i] > 0]
+    mAP = np.sum(scores) / len(scores)
+    
+    print('\nTraining score: {}/{} ({:.0f}%; mAP: {:.2f})\n'.format(
+        correct, len(train_loader.dataset), 100. * correct / len(train_loader.dataset),
+        100. * mAP
     ))
 
     return 100. * correct / len(train_loader.dataset)
 
 def validation():
+    retrieved = {}
+    relevantAndRetrieved = {}
+
     with torch.no_grad():
         model.eval()
         validation_loss = 0
         correct = 0
-        for data, target in tqdm(val_loader):
+        for data, target, indices in tqdm(val_loader):
             if use_cuda:
                 data, target = data.cuda(args.gpu), target.cuda(args.gpu)
             output = model(data)
             # sum up batch loss
             if args.estimator_type == "class":
-                criterion = torch.nn.CrossEntropyLoss(reduction='mean')
+                criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
             else:
-                criterion = torch.nn.MSELoss(reduction="mean")
+                criterion = torch.nn.MSELoss(reduction="elementwise_mean")
                 target = target.float()
                 output = output[:,0]
             validation_loss += criterion(output, target).data.item()
@@ -138,11 +166,28 @@ def validation():
             else:
                 pred = output.data.round()
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+            for j in range(indices.size(0)):
+                ref = int(indices[j, 0])
+                if ref not in retrieved.keys():
+                    retrieved[ref] = 0
+                if ref not in relevantAndRetrieved.keys():
+                    relevantAndRetrieved[ref] = 0
+                other = int(indices[j, 1])
+
+                if pred[j].cpu().item() == 1:
+                    retrieved[ref] += 1
+                if pred[j].cpu().item() == 1 and target[j].cpu().item() == 1:
+                    relevantAndRetrieved[ref] += 1
+
+        scores = [relevantAndRetrieved[i] * 1. / retrieved[i] for i in retrieved.keys() if retrieved[i] > 0]
+        mAP = np.sum(scores) / len(scores)
 
         validation_loss /= len(val_loader.dataset)
-        print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%\n'.format(
             validation_loss, correct, len(val_loader.dataset),
-            100. * correct / len(val_loader.dataset)))
+            100. * correct / len(val_loader.dataset),
+            100. * mAP
+        ))
     
         return 100. * correct / len(val_loader.dataset)
 
