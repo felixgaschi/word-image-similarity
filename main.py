@@ -10,7 +10,7 @@ import numpy as np
 
 
 parser = argparse.ArgumentParser(description='Word Image similarity training script')
-parser.add_argument('--data', type=str, default='../pair-dataset', metavar='D',
+parser.add_argument('--data', type=str, default='../preprocessed', metavar='D',
                     help="folder where data is located.")
 parser.add_argument('--batch-size', type=int, default=32, metavar='B',
                     help='input batch size for training (default: 32)')
@@ -60,7 +60,7 @@ import data
 
 
 loader_controller = data.ManuallyBalancedController(
-    "../preprocessed", 
+    args.data, 
     transform_eval_before=data.validation_transform_before,
     transform_eval_after=data.validation_transform_after,
     transform_before=data.train_transform_before,
@@ -104,9 +104,9 @@ def train(epoch):
         optimizer.zero_grad()
         output = model(data)
         if args.estimator_type == "class":
-            criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
+            criterion = torch.nn.CrossEntropyLoss(reduction='mean')
         else:
-            criterion = torch.nn.MSELoss(reduction="elementwise_mean")
+            criterion = torch.nn.MSELoss(reduction="mean")
             target = target.float()
             output = output[:,0]
         loss = criterion(output, target)
@@ -154,9 +154,9 @@ def validation():
             output = model(data)
             # sum up batch loss
             if args.estimator_type == "class":
-                criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
+                criterion = torch.nn.CrossEntropyLoss(reduction='mean')
             else:
-                criterion = torch.nn.MSELoss(reduction="elementwise_mean")
+                criterion = torch.nn.MSELoss(reduction="mean")
                 target = target.float()
                 output = output[:,0]
             validation_loss += criterion(output, target).data.item()
