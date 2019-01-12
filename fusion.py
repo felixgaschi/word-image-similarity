@@ -137,17 +137,17 @@ def fusion():
             # get the index of the max log-probability
             if args.estimator2_type == "class":
                 #pred2 = output2.data.max(1, keepdim=True)[1]
-                pred2 = torch.div(torch.exp(output2.data[:,1]),torch.sum(torch.exp(output2.data),1))
+                pred2 = torch.div(output2.data[:,1],torch.sum(output2.data,1))
             else:
                 #pred2 = output2.data.round()
-                pred2 = torch.pow(torch.add(1,torch.exp(-output2.data)),-1)
+                pred2 = output2.data
                 
             if args.estimator1_type == "class":
                 #pred1 = output1.data.max(1, keepdim=True)[1]
-                pred1 = torch.div(torch.exp(output2.data[:,1]),torch.sum(torch.exp(output2.data),1))
+                pred1 = torch.div(output1.data[:,1],torch.sum(output1.data,1))
             else:
                 #pred1 = output1.data.round()
-                pred1 = torch.pow(torch.add(1,torch.exp(-output2.data)),-1)
+                pred1 = output1.data
                 
             pred = (pred1 + pred2)/2
             pred = pred.round()
