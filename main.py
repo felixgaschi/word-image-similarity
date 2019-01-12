@@ -33,6 +33,7 @@ parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--optimizer', type=str, default="SGD")
 parser.add_argument('--nb-train', type=int, default=None)
 parser.add_argument('--nb-eval', type=int, default=None)
+parser.add_argument('--whole-data', type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -58,28 +59,48 @@ elif args.estimator_type == "regressor":
 
 import data
 
-
-loader_controller = data.ManuallyBalancedController(
-    args.data, 
-    transform_eval_before=data.validation_transform_before,
-    transform_eval_after=data.validation_transform_after,
+train_set = data.SplitPageDataset(
+    args.data,
+    begin=1,
+    end=3687,
     transform_before=data.train_transform_before,
     transform_after=data.train_transform_after,
     transform_true_before=None,
-    nb_words_train=args.nb_train,
-    nb_words_val=args.nb_eval,
-    verbose=1
+    transform_true_after=None,
+    more_true=0,
+    limit=args.nb_train
+)
+test_set = data.SplitPageDataset(
+    args.data,
+    begin=3687,
+    end=4861,
+    transform_before=data.validation_transform_before,
+    transform_after=data.validation_transform_after,
+    transform_true_before=None,
+    transform_true_after=None,
+    more_true=0,
+    limit=args.nb_eval
 )
 
 train_loader = torch.utils.data.DataLoader(
-    loader_controller.training_set,
+    train_set,
     batch_size=args.batch_size, shuffle=True, num_workers=args.nb_workers
 )
 
 val_loader = torch.utils.data.DataLoader(
-    loader_controller.evaluation_set,
-    batch_size=args.batch_size, shuffle=False, num_workers=args.nb_workers
+    test_set,
+    batch_size=args.batch_size, shuffle=True, num_workers=args.nb_workers
 )
+
+nb_false, nb_true, more_true = train_set.get_info()
+print("Info about training set:\nnb false:{:d}\nnb true:{:d}\nadditionnal transformed true:{:d}\n".format(
+    nb_false, nb_true, more_true
+))
+
+nb_false, nb_true, more_true = test_set.get_info()
+print("Info about validation set:\nnb false:{:d}\nnb true:{:d}\nadditionnal transformed true:{:d}\n".format(
+    nb_false, nb_true, more_true
+))
 
 if use_cuda:
     print('Using GPU')

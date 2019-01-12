@@ -42,6 +42,111 @@ def grey_pil_loader(path):
         img = Image.open(f)
         return img.convert("L")
 
+class SplitPageDataset(data.Dataset):
+
+    def __init__(self, root, begin=1, end=3697,
+                transform_before=None, 
+                transform_after=None,
+                transform_true_before=None,
+                transform_true_after=None,
+                loader=grey_pil_loader,
+                more_true=0,
+                limit=None
+                ):
+        self.root = root
+        self.begin = begin
+        self.end = end
+        self.transform_before = transform_before
+        self.transform_after = transform_after
+        self.transform_true_before = transform_true_before
+        self.transform_true_after = transform_true_after
+        self.loader = loader
+        self.more_true = more_true
+
+        words = []
+        indices = {}
+
+        with open(os.path.join(root, "words.txt"), "r") as f:
+            for i, line in enumerate(f):
+                w = line.strip()
+                words.append(w)
+                if i + 1 >= self.begin and i + 1 < self.end:
+                    if w not in indices.keys():
+                        indices[w] = [i + 1]
+                    else:
+                        indices[w].append(i + 1)
+        
+
+        self.words = words
+        self.indices = indices
+
+        if limit is not None:
+            self.limit = min((end - begin) ** 2, limit)
+        else:
+            self.limit = (end - begin) ** 2
+        self.length = self.limit + self.more_true
+    
+    def get_file(self, id):
+        return os.path.join(self.root, "word-{:06d}.png".format(id))
+
+    def get_indices_target(self, index):
+        if index < self.limit:
+            indexA = self.begin + index // (self.end - self.begin)
+            indexB = self.begin + index % (self.end - self.begin)
+            w1, w2 = self.words[indexA], self.words[indexB]
+            if w1 == w2:
+                target = 1
+            else:
+                target = 0
+        else:
+            index -= self.limit
+            w = np.random.choice(list(self.indices.keys()))
+            indexA = np.random.choice(self.indices[w])
+            indexB = np.random.choice(self.indices[w])
+            target = 1
+        return indexA, indexB, target
+
+    def __getitem__(self, index):
+        indexA, indexB, target = self.get_indices_target(index)
+        
+        fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
+        sample1, sample2 = self.loader(fname_i), self.loader(fname_j)
+        indices = torch.tensor([indexA, indexB], dtype=torch.int)
+
+        if self.transform_before is not None:
+            sample1 = self.transform_before(sample1)
+            sample2 = self.transform_before(sample2)
+
+        if self.transform_true_before is not None and target == 1:
+            sample1 = self.transform_true_before(sample1)
+            sample2 = self.transform_true_before(sample2)
+
+        sample1 = transforms.ToTensor()(sample1)
+        sample2 = transforms.ToTensor()(sample2)
+        sample = torch.cat((sample1, sample2), 0)
+
+        if self.transform_after is not None:
+            sample = self.transform_after(sample)
+
+        if self.transform_true_after is not None and target == 1:
+            sample = self.transform_true_after(sample)
+
+        return (sample, target, indices)
+    
+    def __len__(self):
+        return self.length
+
+    def get_info(self):
+        nb_false = 0
+        nb_true = 0
+        for i in range(self.limit):
+            _, _, target = self.get_indices_target(i)
+            if target == 1:
+                nb_true += 1
+            else:
+                nb_false += 1
+        return nb_false, nb_true, self.more_true
+
 
 class ManuallyBalancedController():
 
@@ -107,7 +212,7 @@ class ManuallyBalancedController():
             transform_true_after = None,
             nb_words=nb_words_val
         )
-        
+
 
 class ManuallyBalancedDataSet(data.Dataset):
 
@@ -139,7 +244,7 @@ class ManuallyBalancedDataSet(data.Dataset):
             for j, w2 in enumerate(sortedWords[:nb_words]):
                 length += len(indices[w1]) * len(indices[w2])
         
-        self.length = length + length // true_period
+        self.length = length
         self.true_period = true_period
 
     def get_indices_false(self, index):
