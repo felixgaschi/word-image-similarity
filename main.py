@@ -34,6 +34,7 @@ parser.add_argument('--optimizer', type=str, default="SGD")
 parser.add_argument('--nb-train', type=int, default=None)
 parser.add_argument('--nb-eval', type=int, default=None)
 parser.add_argument('--whole-data', type=bool, default=False)
+parser.add_argument('--load', type=int, default=0)
 
 args = parser.parse_args()
 
@@ -107,6 +108,11 @@ if use_cuda:
     model.cuda(args.gpu)
 else:
     print('Using CPU')
+
+if args.load :
+    dirName = "/exp-{:05d}".format(args.load)
+    model.load_state_dict(torch.load(args.experiment + dirName + '.pth'))
+    model.eval()
 
 if args.optimizer == "SGD" :
     optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0002)
