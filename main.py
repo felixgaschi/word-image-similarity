@@ -35,6 +35,7 @@ parser.add_argument('--nb-train', type=int, default=None)
 parser.add_argument('--nb-eval', type=int, default=None)
 parser.add_argument('--whole-data', type=bool, default=False)
 parser.add_argument('--load', type=int, default=0)
+parser.add_argument('--nb-more', type=int, default=0)
 
 args = parser.parse_args()
 
@@ -68,13 +69,13 @@ train_set = data.SplitPageDataset(
     transform_after=data.train_transform_after,
     transform_true_before=None,
     transform_true_after=None,
-    more_true=0,
+    more_true=args.nb_more,
     limit=args.nb_train
 )
 test_set = data.SplitPageDataset(
     args.data,
     begin=3687,
-    end=4861,
+    end=4860,
     transform_before=data.validation_transform_before,
     transform_after=data.validation_transform_after,
     transform_true_before=None,
@@ -146,13 +147,11 @@ def train(epoch):
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
         for j in range(indices.size(0)):
             ref = int(indices[j, 0])
-            if ref not in retrieved.keys():
-                retrieved[ref] = 0
-            if ref not in relevantAndRetrieved.keys():
-                relevantAndRetrieved[ref] = 0
-            other = int(indices[j, 1])
 
             if pred[j].cpu().item() == 1:
+                if ref not in retrieved.keys():
+                    relevantAndRetrieved[ref] = 0
+                    retrieved[ref] = 0
                 retrieved[ref] += 1
             if pred[j].cpu().item() == 1 and target[j].cpu().item() == 1:
                 relevantAndRetrieved[ref] += 1
@@ -195,13 +194,12 @@ def validation():
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
             for j in range(indices.size(0)):
                 ref = int(indices[j, 0])
-                if ref not in retrieved.keys():
-                    retrieved[ref] = 0
-                if ref not in relevantAndRetrieved.keys():
-                    relevantAndRetrieved[ref] = 0
                 other = int(indices[j, 1])
 
                 if pred[j].cpu().item() == 1:
+                    if ref not in retrieved.keys():
+                        relevantAndRetrieved[ref] = 0
+                        retrieved[ref] = 0
                     retrieved[ref] += 1
                 if pred[j].cpu().item() == 1 and target[j].cpu().item() == 1:
                     relevantAndRetrieved[ref] += 1

@@ -79,6 +79,7 @@ class SplitPageDataset(data.Dataset):
 
         self.words = words
         self.indices = indices
+        self.word_set = list(set(words))
 
         if limit is not None:
             self.limit = min((end - begin) ** 2, limit)
@@ -104,14 +105,16 @@ class SplitPageDataset(data.Dataset):
             indexA = np.random.choice(self.indices[w])
             indexB = np.random.choice(self.indices[w])
             target = 1
-        return indexA, indexB, target
+            w1, w2 = w, w
+        idA, idB = self.word_set.index(w1), self.word_set.index(w2)
+        return indexA, indexB, target, idA, idB
 
     def __getitem__(self, index):
-        indexA, indexB, target = self.get_indices_target(index)
+        indexA, indexB, target, idA, idB = self.get_indices_target(index)
         
         fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
         sample1, sample2 = self.loader(fname_i), self.loader(fname_j)
-        indices = torch.tensor([indexA, indexB], dtype=torch.int)
+        indices = torch.tensor([idA, idB], dtype=torch.int)
 
         if self.transform_before is not None:
             sample1 = self.transform_before(sample1)
@@ -140,7 +143,7 @@ class SplitPageDataset(data.Dataset):
         nb_false = 0
         nb_true = 0
         for i in range(self.limit):
-            _, _, target = self.get_indices_target(i)
+            _, _, target, _, _ = self.get_indices_target(i)
             if target == 1:
                 nb_true += 1
             else:
