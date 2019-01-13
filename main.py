@@ -67,7 +67,7 @@ train_set = data.SplitPageDataset(
     transform_before=data.train_transform_before,
     transform_after=data.train_transform_after,
     transform_true_before=data.train_true_before,
-    transform_true_after=data.train_true_after,
+    transform_true_after=None,
     more_true=args.nb_more,
     limit=args.nb_train
 )

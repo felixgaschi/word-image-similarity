@@ -55,7 +55,8 @@ class SplitPageDataset(data.Dataset):
                 transform_true_after=None,
                 loader=grey_pil_loader,
                 more_true=0,
-                limit=None
+                limit=None,
+                keep_identical=False
                 ):
         self.root = root
         self.begin = begin
@@ -66,6 +67,7 @@ class SplitPageDataset(data.Dataset):
         self.transform_true_after = transform_true_after
         self.loader = loader
         self.more_true = more_true
+        self.keep_identical = keep_identical
 
         words = []
         indices = {}
@@ -85,10 +87,11 @@ class SplitPageDataset(data.Dataset):
         self.indices = indices
         self.word_set = list(set(words))
 
+        length = (end - begin) ** 2 if keep_identical else (end - begin) * (end - begin - 1)
         if limit is not None:
-            self.limit = min((end - begin) ** 2, limit)
+            self.limit = min(length, limit)
         else:
-            self.limit = (end - begin) ** 2
+            self.limit = length
         self.length = self.limit + self.more_true
     
     def get_file(self, id):
@@ -97,7 +100,12 @@ class SplitPageDataset(data.Dataset):
     def get_indices_target(self, index):
         if index < self.limit:
             indexA = self.begin + index // (self.end - self.begin)
-            indexB = self.begin + index % (self.end - self.begin)
+            if not self.keep_identical:
+                indexB = self.begin + index % (self.end - self.begin - 1)
+                if indexB >= indexA:
+                    indexB += 1
+            else:
+                indexB = self.begin + index % (self.end - self.begin)
             w1, w2 = self.words[indexA], self.words[indexB]
             if w1 == w2:
                 target = 1
@@ -105,9 +113,12 @@ class SplitPageDataset(data.Dataset):
                 target = 0
         else:
             index -= self.limit
-            w = np.random.choice(list(self.indices.keys()))
-            indexA = np.random.choice(self.indices[w])
-            indexB = np.random.choice(self.indices[w])
+            if not self.keep_identical:
+                w = np.random.choice([w for w in list(self.indices.keys()) if len(self.indices[w]) >= 2])
+                indexA, indexB = np.random.choice(self.indices[w], size=(2,), replace=False)
+            else:
+                w = np.random.choice(list(self.indices.keys()))
+                indexA, indexB = np.random.choice(self.indices[w], size=(2,))
             target = 1
             w1, w2 = w, w
         idA, idB = self.word_set.index(w1), self.word_set.index(w2)
