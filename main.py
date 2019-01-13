@@ -33,7 +33,6 @@ parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--optimizer', type=str, default="SGD")
 parser.add_argument('--nb-train', type=int, default=None)
 parser.add_argument('--nb-eval', type=int, default=None)
-parser.add_argument('--whole-data', type=bool, default=False)
 parser.add_argument('--load', type=int, default=0)
 parser.add_argument('--nb-more', type=int, default=0)
 
@@ -159,7 +158,7 @@ def train(epoch):
     scores = [relevantAndRetrieved[i] * 1. / retrieved[i] for i in retrieved.keys() if retrieved[i] > 0]
     mAP = np.sum(scores) / len(scores)
     
-    print('\nTraining score: {}/{} ({:.0f}%; mAP: {:.2f})\n'.format(
+    print('\nTraining score: {}/{} ({:.0f}%; mAP: {:.2f}%)\n'.format(
         correct, len(train_loader.dataset), 100. * correct / len(train_loader.dataset),
         100. * mAP
     ))
@@ -204,14 +203,18 @@ def validation():
                 if pred[j].cpu().item() == 1 and target[j].cpu().item() == 1:
                     relevantAndRetrieved[ref] += 1
 
-        scores = [relevantAndRetrieved[i] * 1. / retrieved[i] for i in retrieved.keys() if retrieved[i] > 0]
-        mAP = np.sum(scores) / len(scores)
+        scores_1 = [relevantAndRetrieved[i] * 1. / retrieved[i] for i in retrieved.keys() if retrieved[i] > 0 and test_set.words[i] in train_set.word_set]
+        scores_2 = [relevantAndRetrieved[i] * 1. / retrieved[i] for i in retrieved.keys() if retrieved[i] > 0 and test_set.words[i] not in train_set.word_set]
+        scores = scores_1 + scores_2
+        mAP = np.sum(scores) / len(scores) 
+        mAP_1 = np.sum(scores_1) / len(scores_1)
+        mAP_2 = np.sum(scores_2) / len(scores_2)
 
         validation_loss /= len(val_loader.dataset)
-        print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%\n'.format(
+        print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}% (same: {:.2f}% ; difft: {:.2f}%)\n'.format(
             validation_loss, correct, len(val_loader.dataset),
             100. * correct / len(val_loader.dataset),
-            100. * mAP
+            100. * mAP, 100. * mAP_1, 100. * mAP_2
         ))
     
         return 100. * correct / len(val_loader.dataset)
