@@ -144,17 +144,23 @@ if args.load :
     model.eval()
 
 if args.optimizer == "SGD" :
-    optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.9, weight_decay=0.0002)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.0002)
 elif args.optimizer == "Adam" :
     optimizer = optim.Adam(model.parameters(), lr=10**-5)
 
 def train(epoch):
     retrieved = {}
     relevantAndRetrieved = {}
+    
+    start_batch = epoch * len(train_loader)
 
     model.train()
     correct = 0
     for batch_idx, (data, target, indices) in tqdm(enumerate(train_loader), total=len(train_loader)):
+        if start_batch + batch_idx % 50000 == 0:
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = args.lr * (0.1 ** ((start_batch + batch_idx) // 50000))
+
         if use_cuda:
             data, target = data.cuda(args.gpu), target.cuda(args.gpu)
         optimizer.zero_grad()
