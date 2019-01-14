@@ -94,6 +94,11 @@ class SplitPageDataset(data.Dataset):
             self.limit = min(length, limit)
         else:
             self.limit = length
+        
+        self.true_indices = self.get_indices_true()
+        assert len(self.true_indices) > 0 or self.more_true == 0, "The dataset is too small to contain any true pair. " \
+                                                                  + "You should use ToyDataset instead or choose " \
+                                                                  + "a larger number of samples."
         self.length = self.limit + self.more_true
     
     def get_file(self, id):
@@ -113,17 +118,11 @@ class SplitPageDataset(data.Dataset):
                 target = 1
             else:
                 target = 0
+            idA, idB = self.word2id[w1], self.word2id[w2]
         else:
             index -= self.limit
-            if not self.keep_identical:
-                w = np.random.choice([w for w in list(self.indices.keys()) if len(self.indices[w]) >= 2])
-                indexA, indexB = np.random.choice(self.indices[w], size=(2,), replace=False)
-            else:
-                w = np.random.choice(list(self.indices.keys()))
-                indexA, indexB = np.random.choice(self.indices[w], size=(2,))
-            target = 1
-            w1, w2 = w, w
-        idA, idB = self.word2id[w1], self.word2id[w2]
+            newIndex = np.random.choice(self.true_indices)
+            return self.get_indices_target(newIndex)
         return indexA, indexB, target, idA, idB
 
     def __getitem__(self, index):
@@ -166,7 +165,60 @@ class SplitPageDataset(data.Dataset):
             else:
                 nb_false += 1
         return nb_false, nb_true, self.more_true
+    
+    def get_indices_true(self):
+        res = []
+        for i in range(self.limit):
+            _, _, target, _, _ = self.get_indices_target(i)
+            if target == 1:
+                res.append(i)
+        return res
 
+
+class ToyDataset(SplitPageDataset):
+
+    def __init__(self, *args, **kwargs):
+        super(ToyDataset, self).__init__(*args, **kwargs)
+
+        nb_false = self.limit // 2
+        nb_true = self.limit - nb_false
+
+        false_samples = []
+        true_samples = []
+
+        for i in range(self.begin, self.end):
+            for j in range(self.begin, self.end):
+                if i == j:
+                    continue
+                if self.words[i] == self.words[j] and len(true_samples) < nb_true:
+                    true_samples.append((i, j))
+                elif self.words[i] != self.words[j] and len(false_samples) < nb_false:
+                    false_samples.append((i, j))
+                if len(false_samples) == nb_false and len(true_samples) == nb_true:
+                    break
+            if len(false_samples) == nb_false and len(true_samples) == nb_true:
+                break
+        
+        self.false_samples = false_samples
+        self.true_samples = true_samples
+
+    
+    def get_indices_target(self, index):
+        if not hasattr(self, "false_samples"):
+            return super(ToyDataset, self).get_indices_target(index)
+        if index < len(self.false_samples):
+            indexA, indexB = self.false_samples[index]
+            target = 0
+        else:
+            index -= len(self.false_samples)
+            indexA, indexB = self.true_samples[index]
+            target = 1
+        w1, w2 = self.words[indexA], self.words[indexB]
+        idA, idB = self.word2id[w1], self.word2id[w2]
+        return indexA, indexB, target, idA, idB
+    
+    def __len__(self):
+        return len(self.false_samples) + len(self.true_samples)
 
 class ManuallyBalancedController():
 

@@ -35,6 +35,8 @@ parser.add_argument('--nb-train', type=int, default=None)
 parser.add_argument('--nb-eval', type=int, default=None)
 parser.add_argument('--load', type=int, default=0)
 parser.add_argument('--nb-more', type=int, default=0)
+parser.add_argument('--eval-toy', type=bool, default=False)
+parser.add_argument('--train-toy', type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -60,28 +62,55 @@ elif args.estimator_type == "regressor":
 
 import data
 
-train_set = data.SplitPageDataset(
-    args.data,
-    begin=1,
-    end=3687,
-    transform_before=data.train_transform_before,
-    transform_after=data.train_transform_after,
-    transform_true_before=data.train_true_before,
-    transform_true_after=None,
-    more_true=args.nb_more,
-    limit=args.nb_train
-)
-test_set = data.SplitPageDataset(
-    args.data,
-    begin=3687,
-    end=4860,
-    transform_before=data.validation_transform_before,
-    transform_after=data.validation_transform_after,
-    transform_true_before=None,
-    transform_true_after=None,
-    more_true=0,
-    limit=args.nb_eval
-)
+if args.train_toy:
+    train_set = data.ToyDataset(
+        args.data,
+        begin=1,
+        end=3687,
+        transform_before=data.train_transform_before,
+        transform_after=data.train_transform_after,
+        transform_true_before=data.train_true_before,
+        transform_true_after=None,
+        more_true=args.nb_more,
+        limit=args.nb_train
+    )
+else:
+    train_set = data.SplitPageDataset(
+        args.data,
+        begin=1,
+        end=3687,
+        transform_before=data.train_transform_before,
+        transform_after=data.train_transform_after,
+        transform_true_before=data.train_true_before,
+        transform_true_after=None,
+        more_true=args.nb_more,
+        limit=args.nb_train
+    )
+
+if args.eval_toy:
+    test_set = data.ToyDataset(
+        args.data,
+        begin=3687,
+        end=4860,
+        transform_before=data.validation_transform_before,
+        transform_after=data.validation_transform_after,
+        transform_true_before=None,
+        transform_true_after=None,
+        more_true=0,
+        limit=args.nb_eval
+    )
+else:
+    test_set = data.SplitPageDataset(
+        args.data,
+        begin=3687,
+        end=4860,
+        transform_before=data.validation_transform_before,
+        transform_after=data.validation_transform_after,
+        transform_true_before=None,
+        transform_true_after=None,
+        more_true=0,
+        limit=args.nb_eval
+    )
 
 train_loader = torch.utils.data.DataLoader(
     train_set,
