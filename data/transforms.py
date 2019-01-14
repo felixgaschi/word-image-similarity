@@ -103,8 +103,10 @@ class SplitPageDataset(data.Dataset):
         length = (end - begin) ** 2 if keep_identical else (end - begin) * (end - begin - 1)
         if limit is not None:
             self.limit = min(length, limit)
+            self.newEnd = int(np.ceil(np.sqrt(self.limit))) + begin
         else:
             self.limit = length
+            self.newEnd = self.end
         
         self.true_indices = self.get_indices_true()
         assert len(self.true_indices) > 0 or self.more_true == 0, "The dataset is too small to contain any true pair. " \
@@ -117,13 +119,13 @@ class SplitPageDataset(data.Dataset):
 
     def get_indices_target(self, index):
         if index < self.limit:
-            indexA = self.begin + index // (self.end - self.begin)
+            indexA = self.begin + index // (self.newEnd - self.begin)
             if not self.keep_identical:
-                indexB = self.begin + index % (self.end - self.begin - 1)
+                indexB = self.begin + index % (self.newEnd - self.begin - 1)
                 if indexB >= indexA:
                     indexB += 1
             else:
-                indexB = self.begin + index % (self.end - self.begin)
+                indexB = self.begin + index % (self.newEnd - self.begin)
             w1, w2 = self.words[indexA], self.words[indexB]
             if w1 == w2:
                 target = 1
