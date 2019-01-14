@@ -156,7 +156,7 @@ def train(epoch):
 
     model.train()
     correct = 0
-    for batch_idx, (data, target, indices) in tqdm(enumerate(train_loader), total=len(train_loader)):
+    for batch_idx, (data, target, indices) in tqdm(enumerate(train_loader), total=len(train_loader), position=0):
         if start_batch + batch_idx % 50000 == 0:
             for param_group in optimizer.param_groups:
                 param_group["lr"] = args.lr * (0.1 ** ((start_batch + batch_idx) // 50000))
@@ -213,7 +213,7 @@ def validation():
         model.eval()
         validation_loss = 0
         correct = 0
-        for data, target, indices in tqdm(val_loader):
+        for data, target, indices in tqdm(val_loader, position=0):
             if use_cuda:
                 data, target = data.cuda(args.gpu), target.cuda(args.gpu)
             output = model(data)
