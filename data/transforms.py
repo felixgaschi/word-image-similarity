@@ -85,7 +85,9 @@ class SplitPageDataset(data.Dataset):
 
         self.words = words
         self.indices = indices
-        self.word_set = list(set(words))
+        self.word_set = set(words)
+        self.id2word = {i:w for i,w in enumerate(self.word_set)}
+        self.word2id = {w:i for i,w in enumerate(self.word_set)}
 
         length = (end - begin) ** 2 if keep_identical else (end - begin) * (end - begin - 1)
         if limit is not None:
@@ -121,7 +123,7 @@ class SplitPageDataset(data.Dataset):
                 indexA, indexB = np.random.choice(self.indices[w], size=(2,))
             target = 1
             w1, w2 = w, w
-        idA, idB = self.word_set.index(w1), self.word_set.index(w2)
+        idA, idB = self.word2id[w1], self.word2id[w2]
         return indexA, indexB, target, idA, idB
 
     def __getitem__(self, index):
