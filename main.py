@@ -70,7 +70,7 @@ if args.train_toy:
         transform_before=data.train_transform_before,
         transform_after=data.train_transform_after,
         transform_true_before=data.train_true_before,
-        transform_true_after=None,
+        transform_true_after=data.train_true_after,
         more_true=args.nb_more,
         limit=args.nb_train
     )
@@ -82,7 +82,7 @@ else:
         transform_before=data.train_transform_before,
         transform_after=data.train_transform_after,
         transform_true_before=data.train_true_before,
-        transform_true_after=None,
+        transform_true_after=data.train_true_after,
         more_true=args.nb_more,
         limit=args.nb_train
     )
@@ -198,6 +198,11 @@ def validation():
     retrieved = {}
     relevantAndRetrieved = {}
 
+    nb_true = 0
+    nb_true_true = 0
+    nb_false = 0
+    nb_true_false = 0
+
     with torch.no_grad():
         model.eval()
         validation_loss = 0
@@ -229,11 +234,18 @@ def validation():
                         relevantAndRetrieved[ref] = 0
                         retrieved[ref] = 0
                     retrieved[ref] += 1
-                if pred[j].cpu().item() == 1 and target[j].cpu().item() == 1:
-                    relevantAndRetrieved[ref] += 1
+                    if target[j].cpu().item() == 1:
+                        relevantAndRetrieved[ref] += 1
+                        nb_true_true += 1
+                if target[j].cpu().item() == 1:
+                    nb_true += 1
+                else:
+                    nb_false += 1
+                    if pred[j].cpu().item() == 0:
+                        nb_true_false += 1
 
-        scores_1 = [relevantAndRetrieved[i] * 1. / retrieved[i] for i in retrieved.keys() if retrieved[i] > 0 and test_set.words[i] in train_set.word_set]
-        scores_2 = [relevantAndRetrieved[i] * 1. / retrieved[i] for i in retrieved.keys() if retrieved[i] > 0 and test_set.words[i] not in train_set.word_set]
+        scores_1 = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys() if test_set.words[i] in train_set.word_set]
+        scores_2 = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys() if test_set.words[i] not in train_set.word_set]
         scores = scores_1 + scores_2
         mAP = np.sum(scores) / len(scores) 
         mAP_1 = np.sum(scores_1) / len(scores_1)
@@ -245,6 +257,9 @@ def validation():
             100. * correct / len(val_loader.dataset),
             100. * mAP, 100. * mAP_1, 100. * mAP_2
         ))
+
+        print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))
+        print('True negative / negative: {:.4f}'.format(nb_true_false * 1. / nb_false))
     
         return 100. * correct / len(val_loader.dataset)
 

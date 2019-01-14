@@ -28,7 +28,10 @@ def validation_transform():
         transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
     ])
 
-train_transform_before = transforms.Resize((40, 100))
+train_transform_before = transforms.Compose([
+    transforms.Resize((40, 100)),
+    transforms.RandomAffine(0.,scale=[0.8,1.2])
+])
 validation_transform_before = transforms.Resize((40, 100))     
 
 train_transform_after = transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
@@ -37,8 +40,8 @@ validation_transform_after = transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 
 def noise(img, std=5):
     return img + torch.randn(img.size())*std
 
-train_true_before = transforms.RandomAffine(5,scale=[0.8,1.2],shear=10)
-train_true_after = transforms.Lambda(noise)
+train_true_before = None #transforms.RandomAffine(0,scale=[0.8,1.2])
+train_true_after = None # transforms.Lambda(noise)
 
 def grey_pil_loader(path):
     # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
