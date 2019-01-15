@@ -16,7 +16,7 @@ parser.add_argument('--model', type=str, default="2channels")
 parser.add_argument('--model-name', type=str, default="")
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--nb-workers', type=int, default=1)
-
+parser.add_argument('--lim', type=int, default=None)
 
 args = parser.parse_args()
 
@@ -51,7 +51,8 @@ test_set = data.SplitPageDataset(
     transform_true_before=None,
     transform_true_after=None,
     more_true=0,
-    keep_identical=True
+    keep_identical=True,
+    limit=args.lim
 )
 
 val_loader = torch.utils.data.DataLoader(
@@ -117,18 +118,14 @@ with torch.no_grad():
                 if pred[j].cpu().item() == 0:
                     nb_true_false += 1
 
-    scores_1 = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys() if test_set.words[i] in train_set.word_set]
-    scores_2 = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys() if test_set.words[i] not in train_set.word_set]
-    scores = scores_1 + scores_2
+    scores = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys() if test_set.words[i] in train_set.word_set]
     mAP = np.sum(scores) / len(scores) 
-    mAP_1 = np.sum(scores_1) / len(scores_1)
-    mAP_2 = np.sum(scores_2) / len(scores_2)
 
     validation_loss /= len(val_loader.dataset)
-    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}% (same: {:.2f}% ; difft: {:.2f}%)\n'.format(
+    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%)\n'.format(
         validation_loss, correct, len(val_loader.dataset),
         100. * correct / len(val_loader.dataset),
-        100. * mAP, 100. * mAP_1, 100. * mAP_2
+        100. * mAP
     ))
 
     print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))
