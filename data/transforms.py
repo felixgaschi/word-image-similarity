@@ -36,14 +36,14 @@ train_transform_before = transforms.Compose([
     transforms.Lambda(lambda x: jitter(x)),
     transforms.Resize((40, 100))
 ])
-validation_transform_before = transforms.Compose([
-    transforms.Lambda(lambda x: jitter(x)),
-    transforms.Resize((40, 100))
-])
+validation_transform_before = transforms.Resize((40, 100))
+train_transform_before_noaugment = transforms.Resize((40, 100))
 
 
 train_transform_after = transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
 validation_transform_after = transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
+
+
 
 def noise(img, std=5):
     return img + torch.randn(img.size())*std

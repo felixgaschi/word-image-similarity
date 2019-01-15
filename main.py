@@ -37,8 +37,11 @@ parser.add_argument('--load', type=int, default=0)
 parser.add_argument('--nb-more', type=int, default=0)
 parser.add_argument('--eval-toy', type=bool, default=False)
 parser.add_argument('--train-toy', type=bool, default=False)
-parser.add_argument('--use-custom', type=bool, default=False)
+parser.add_argument('--train-custom', type=bool, default=True)
+parser.add_argument('--eval-custom', type=bool, default=False)
 parser.add_argument('--preselect-false', type=bool, default=False)
+parser.add_argument('--keep-identical', type=bool, default=True)
+parser.add_argument('--augment', type=bool, default=True)
 
 args = parser.parse_args()
 
@@ -69,37 +72,40 @@ if args.train_toy:
         args.data,
         begin=1,
         end=3687,
-        transform_before=data.train_transform_before,
-        transform_after=data.train_transform_after,
-        transform_true_before=data.train_true_before,
-        transform_true_after=data.train_true_after,
-        more_true=args.nb_more,
-        limit=args.nb_train
-    )
-elif args.use_custom:
-    train_set = data.CustomDataset(
-        args.data,
-        begin=1,
-        end=3687,
-        transform_before=data.train_transform_before,
+        transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
         transform_after=data.train_transform_after,
         transform_true_before=data.train_true_before,
         transform_true_after=data.train_true_after,
         more_true=args.nb_more,
         limit=args.nb_train,
-        preselect_false=args.preselect_false
+        keep_identical=args.keep_identical
+    )
+elif args.train_custom:
+    train_set = data.CustomDataset(
+        args.data,
+        begin=1,
+        end=3687,
+        transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
+        transform_after=data.train_transform_after,
+        transform_true_before=data.train_true_before,
+        transform_true_after=data.train_true_after,
+        more_true=args.nb_more,
+        limit=args.nb_train,
+        preselect_false=args.preselect_false,
+        keep_identical=args.keep_identical
     )
 else:
     train_set = data.SplitPageDataset(
         args.data,
         begin=1,
         end=3687,
-        transform_before=data.train_transform_before,
+        transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
         transform_after=data.train_transform_after,
         transform_true_before=data.train_true_before,
         transform_true_after=data.train_true_after,
         more_true=args.nb_more,
-        limit=args.nb_train
+        limit=args.nb_train,
+        keep_identical=args.keep_identical
     )
 
 if args.eval_toy:
@@ -113,9 +119,10 @@ if args.eval_toy:
         transform_true_after=None,
         more_true=0,
         limit=args.nb_eval,
-        preselect_false = args.preselect_false
+        preselect_false = args.preselect_false,
+        keep_identical=args.keep_identical
     )
-elif args.use_custom:
+elif args.eval_custom:
     test_set = data.CustomDataset(
         args.data,
         begin=3687,
@@ -125,7 +132,8 @@ elif args.use_custom:
         transform_true_before=None,
         transform_true_after=None,
         more_true=0,
-        limit=args.nb_eval
+        limit=args.nb_eval,
+        keep_identical=args.keep_identical
     )
 else:
     test_set = data.SplitPageDataset(
@@ -137,7 +145,8 @@ else:
         transform_true_before=None,
         transform_true_after=None,
         more_true=0,
-        limit=args.nb_eval
+        limit=args.nb_eval,
+        keep_identical=args.keep_identical
     )
 
 train_loader = torch.utils.data.DataLoader(
