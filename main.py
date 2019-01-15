@@ -237,7 +237,7 @@ def train(epoch):
 
     return 100. * correct / len(train_loader.dataset)
 
-def validation():
+def validation(model):
     retrieved = {}
     relevantAndRetrieved = {}
 
@@ -245,6 +245,8 @@ def validation():
     nb_true_true = 0
     nb_false = 0
     nb_true_false = 0
+    nb_false_true = 0
+    nb_false_false = 0
 
     with torch.no_grad():
         model.eval()
@@ -282,29 +284,35 @@ def validation():
                         nb_true_true += 1
                 if target[j].cpu().item() == 1:
                     nb_true += 1
+                    if pred[j].cpu().item() == 0:
+                        nb_false_false += 1
                 else:
                     nb_false += 1
                     if pred[j].cpu().item() == 0:
                         nb_true_false += 1
+                    else:
+                        nb_false_true += 1
 
-        scores_1 = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys() if test_set.words[i] in train_set.word_set]
-        scores_2 = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys() if test_set.words[i] not in train_set.word_set]
-        scores = scores_1 + scores_2
+        scores = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys()]
         mAP = np.sum(scores) / len(scores) 
-        mAP_1 = np.sum(scores_1) / len(scores_1)
-        mAP_2 = np.sum(scores_2) / len(scores_2)
+
+        true_precision = nb_true_true * 1. / (nb_true_true + nb_false_true)
+        false_precision = nb_true_false * 1. / (nb_true_false + nb_false_false)
 
         validation_loss /= len(val_loader.dataset)
-        print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}% (same: {:.2f}% ; difft: {:.2f}%)\n'.format(
+        print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%)\n'.format(
             validation_loss, correct, len(val_loader.dataset),
             100. * correct / len(val_loader.dataset),
-            100. * mAP, 100. * mAP_1, 100. * mAP_2
+            100. * mAP
         ))
 
         print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))
         print('True negative / negative: {:.4f}'.format(nb_true_false * 1. / nb_false))
-    
-        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false
+
+        print('Positive precision: {:.4f}'.format(true_precision))
+        print('Negative precision: {:.4f}'.format(false_precision))
+        
+        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false, true_precision, false_precision
 
 if args.save:
     if not os.path.exists(args.experiment):
@@ -322,12 +330,12 @@ if args.save:
         res = "\n".join(["{}: {}".format(e, dict[e]) for e in dict.keys()]) + "\n"
         f.write(res)
     with open(os.path.join(args.experiment, dirName, "scores.csv"), "w") as f:
-        f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false")
+        f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false, true_P, false_P\n")
 
 for epoch in range(1, args.epochs + 1):
     t = time()
     train_score = train(epoch)
-    test_score, loss, mAP, acc_true, acc_false = validation()
+    test_score, loss, mAP, acc_true, acc_false, true_P, false_P = validation(model)
     if args.save:
         model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
         torch.save(model.state_dict(), model_file)
@@ -335,5 +343,5 @@ for epoch in range(1, args.epochs + 1):
     elapsed_time = time() - t
     if args.save:
         with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
-            f.write("{:f},{:f},{:f},{:.2f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false))
+            f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
     print("Elapsed time: ", elapsed_time)
