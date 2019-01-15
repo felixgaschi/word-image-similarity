@@ -10,7 +10,7 @@ import numpy as np
 
 
 parser = argparse.ArgumentParser(description='Word Image similarity training script')
-parser.add_argument('--data', type=str, default='../preprocessed', metavar='D',
+parser.add_argument('--data', type=str, default='../dataset', metavar='D',
                     help="folder where data is located.")
 parser.add_argument('--batch-size', type=int, default=32, metavar='B',
                     help='input batch size for training (default: 32)')
