@@ -76,6 +76,8 @@ nb_true = 0
 nb_true_true = 0
 nb_false = 0
 nb_true_false = 0
+nb_false_true = 0
+nb_false_false = 0
 
 with torch.no_grad():
     model.eval()
@@ -113,13 +115,20 @@ with torch.no_grad():
                     nb_true_true += 1
             if target[j].cpu().item() == 1:
                 nb_true += 1
+                if pred[j].cpu().item() == 0:
+                    nb_false_false += 1
             else:
                 nb_false += 1
                 if pred[j].cpu().item() == 0:
                     nb_true_false += 1
+                else:
+                    nb_false_true += 1
 
-    scores = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys() if test_set.words[i] in train_set.word_set]
+    scores = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys()]
     mAP = np.sum(scores) / len(scores) 
+
+    true_precision = nb_true_true * 1. / (nb_true_true + nb_false_true)
+    false_precision = nb_true_false * 1. / (nb_true_false + nb_false_false)
 
     validation_loss /= len(val_loader.dataset)
     print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%)\n'.format(
@@ -130,3 +139,6 @@ with torch.no_grad():
 
     print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))
     print('True negative / negative: {:.4f}'.format(nb_true_false * 1. / nb_false))
+
+    print('Positive precision: {:.4f}'.format(true_precision))
+    print('Negative precision: {:.4f}'.format(false_precision))
