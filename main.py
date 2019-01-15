@@ -14,7 +14,7 @@ parser.add_argument('--data', type=str, default='../dataset', metavar='D',
                     help="folder where data is located.")
 parser.add_argument('--batch-size', type=int, default=32, metavar='B',
                     help='input batch size for training (default: 32)')
-parser.add_argument('--epochs', type=int, default=5, metavar='N',
+parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                     help='learning rate (default: 0.01)')
@@ -31,12 +31,12 @@ parser.add_argument('--estimator-type', type=str, default="class")
 parser.add_argument('--model', type=str, default="siamese")
 parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--optimizer', type=str, default="SGD")
-parser.add_argument('--nb-train', type=int, default=10000)
-parser.add_argument('--nb-eval', type=int, default=1000)
+parser.add_argument('--nb-train', type=int, default=None)
+parser.add_argument('--nb-eval', type=int, default=None)
 parser.add_argument('--load', type=int, default=0)
 parser.add_argument('--nb-more', type=int, default=0)
 parser.add_argument('--eval-toy', type=bool, default=False)
-parser.add_argument('--train-toy', type=bool, default=True)
+parser.add_argument('--train-toy', type=bool, default=False)
 parser.add_argument('--train-custom', type=bool, default=True)
 parser.add_argument('--eval-custom', type=bool, default=True)
 parser.add_argument('--preselect-false', type=bool, default=False)
@@ -322,7 +322,7 @@ if args.save:
         res = "\n".join(["{}: {}".format(e, dict[e]) for e in dict.keys()]) + "\n"
         f.write(res)
     with open(os.path.join(args.experiment, dirName, "scores.csv"), "w") as f:
-        f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false)
+        f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false")
 
 for epoch in range(1, args.epochs + 1):
     t = time()
