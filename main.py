@@ -37,6 +37,8 @@ parser.add_argument('--load', type=int, default=0)
 parser.add_argument('--nb-more', type=int, default=0)
 parser.add_argument('--eval-toy', type=bool, default=False)
 parser.add_argument('--train-toy', type=bool, default=False)
+parser.add_argument('--use-custom', type=bool, default=False)
+parser.add_argument('--preselect-false', type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -74,6 +76,19 @@ if args.train_toy:
         more_true=args.nb_more,
         limit=args.nb_train
     )
+elif args.use_custom:
+    train_set = data.CustomDataset(
+        args.data,
+        begin=1,
+        end=3687,
+        transform_before=data.train_transform_before,
+        transform_after=data.train_transform_after,
+        transform_true_before=data.train_true_before,
+        transform_true_after=data.train_true_after,
+        more_true=args.nb_more,
+        limit=args.nb_train,
+        preselect_false=args.preselect_false
+    )
 else:
     train_set = data.SplitPageDataset(
         args.data,
@@ -89,6 +104,19 @@ else:
 
 if args.eval_toy:
     test_set = data.ToyDataset(
+        args.data,
+        begin=3687,
+        end=4860,
+        transform_before=data.validation_transform_before,
+        transform_after=data.validation_transform_after,
+        transform_true_before=None,
+        transform_true_after=None,
+        more_true=0,
+        limit=args.nb_eval,
+        preselect_false = args.preselect_false
+    )
+elif args.use_custom:
+    test_set = data.CustomDataset(
         args.data,
         begin=3687,
         end=4860,

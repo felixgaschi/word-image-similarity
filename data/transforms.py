@@ -231,4 +231,128 @@ class ToyDataset(SplitPageDataset):
         return indexA, indexB, target, idA, idB
     
     def __len__(self):
-        return len(self.false_samples) + len(self.true_samples)
+        return len(self.false_samples) + len(self.true_samples) 
+
+class CustomDataset(data.Dataset):
+
+    def __init__(self, root, begin=1, end=3697,
+                transform_before=None, 
+                transform_after=None,
+                transform_true_before=None,
+                transform_true_after=None,
+                loader=grey_pil_loader,
+                more_true=0,
+                limit=None,
+                keep_identical=False,
+                preselect_false=False):
+
+        self.root = root
+        self.begin = begin
+        self.end = end
+        self.transform_before = transform_before
+        self.transform_after = transform_after
+        self.transform_true_before = transform_true_before
+        self.transform_true_after = transform_true_after
+        self.loader = loader
+        self.more_true = more_true
+        self.keep_identical = keep_identical
+        self.limit = limit
+        self.preselect_false = preselect_false
+
+        words = []
+        indices = {}
+
+        with open(os.path.join(root, "words.txt"), "r") as f:
+            for i, line in enumerate(f):
+                w = line.strip()
+                words.append(w)
+                if i + 1 >= self.begin and i + 1 < self.end:
+                    if w not in indices.keys():
+                        indices[w] = [i + 1]
+                    else:
+                        indices[w].append(i + 1)
+        
+
+        self.words = words
+        self.indices = indices
+        self.word_set = set(words)
+        self.id2word = {i:w for i,w in enumerate(self.word_set)}
+        self.word2id = {w:i for i,w in enumerate(self.word_set)}
+
+        self.true_pairs_id = []
+        print("Building true pairs list")
+        for ids in tqdm(self.indices.values()):
+            for i in ids:
+                for j in ids:
+                    if j == i and not keep_identical:
+                        continue
+                    if self.limit <= len(self.true_pairs_id):
+                        break
+                    self.true_pairs_id.append((i, j))
+                if self.limit <= len(self.true_pairs_id):
+                    break
+            if self.limit <= len(self.true_pairs_id):
+                break
+
+        nb_true = len(self.true_pairs_id) + self.more_true
+
+        if preselect_false:
+            self.false_pairs_id = []
+            print("Building false pairs list")
+            pbar2 = tqdm(total=len(self.true_pairs_id))
+            while len(self.false_pairs_id) < len(self.true_pairs_id):
+                i, j = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
+                if self.words[i] != self.words[j] and (i, j) not in self.false_pairs_id:
+                    self.false_pairs_id.append((i, j))
+                    pbar2.update(1)
+            pbar2.close()
+
+        self.length = 2 * len(self.true_pairs_id) + self.more_true
+
+    def get_file(self, id):
+        return os.path.join(self.root, "word-{:06d}.png".format(id))
+
+    def __getitem__(self, index):
+        if index % 2 == 0:
+            indexA, indexB = self.true_pairs_id[index // 2]
+            target = 1
+        else:
+            if self.preselect_false:
+                indexA, indexB = self.false_pairs_id[index // 2]
+            else:
+                indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
+                while self.words[indexA] != self.words[indexB]:
+                    indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
+            target = 0
+        w1, w2 = self.words[indexA], self.words[indexB]
+        idA, idB = self.word2id[w1], self.word2id[w2]
+
+        fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
+        sample1, sample2 = self.loader(fname_i), self.loader(fname_j)
+        indices = torch.tensor([idA, idB], dtype=torch.int)
+
+        if self.transform_before is not None:
+            sample1 = self.transform_before(sample1)
+            sample2 = self.transform_before(sample2)
+
+        if self.transform_true_before is not None and target == 1:
+            sample1 = self.transform_true_before(sample1)
+            sample2 = self.transform_true_before(sample2)
+
+        sample1 = transforms.ToTensor()(sample1)
+        sample2 = transforms.ToTensor()(sample2)
+        sample = torch.cat((sample1, sample2), 0)
+
+        if self.transform_after is not None:
+            sample = self.transform_after(sample)
+
+        if self.transform_true_after is not None and target == 1:
+            sample = self.transform_true_after(sample)
+
+        return (sample, target, indices)
+
+    def __len__(self):
+        return self.length
+
+    def get_info(self):
+        return len(self.true_pairs_id), len(self.true_pairs_id), self.more_true
