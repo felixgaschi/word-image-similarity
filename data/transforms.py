@@ -286,35 +286,35 @@ class CustomDataset(data.Dataset):
                 for j in ids:
                     if j == i and not keep_identical:
                         continue
-                    if self.limit <= len(self.true_pairs_id):
+                    if self.limit is not None and self.limit <= len(self.true_pairs_id):
                         break
                     self.true_pairs_id.append((i, j))
-                if self.limit <= len(self.true_pairs_id):
+                if self.limit is not None and self.limit <= len(self.true_pairs_id):
                     break
-            if self.limit <= len(self.true_pairs_id):
+            if self.limit is not None and self.limit <= len(self.true_pairs_id):
                 break
 
-        nb_true = len(self.true_pairs_id) + self.more_true
+        self.nb_true = len(self.true_pairs_id) + self.more_true
 
         if preselect_false:
             self.false_pairs_id = []
             print("Building false pairs list")
-            pbar2 = tqdm(total=len(self.true_pairs_id))
-            while len(self.false_pairs_id) < len(self.true_pairs_id):
+            pbar2 = tqdm(total=self.nb_true)
+            while len(self.false_pairs_id) < self.nb_true:
                 i, j = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
                 if self.words[i] != self.words[j] and (i, j) not in self.false_pairs_id:
                     self.false_pairs_id.append((i, j))
                     pbar2.update(1)
             pbar2.close()
 
-        self.length = 2 * len(self.true_pairs_id) + self.more_true
+        self.length = 2 * self.nb_true
 
     def get_file(self, id):
         return os.path.join(self.root, "word-{:06d}.png".format(id))
 
     def __getitem__(self, index):
         if index % 2 == 0:
-            indexA, indexB = self.true_pairs_id[index // 2]
+            indexA, indexB = self.true_pairs_id[(index // 2) % len(self.true_pairs_id)]
             target = 1
         else:
             if self.preselect_false:
@@ -355,4 +355,4 @@ class CustomDataset(data.Dataset):
         return self.length
 
     def get_info(self):
-        return len(self.true_pairs_id), len(self.true_pairs_id), self.more_true
+        return len(self.true_pairs_id), len(self.true_pairs_id) + self.more_true, self.more_true
