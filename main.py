@@ -304,7 +304,7 @@ def validation():
         print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))
         print('True negative / negative: {:.4f}'.format(nb_true_false * 1. / nb_false))
     
-        return 100. * correct / len(val_loader.dataset), validation_loss
+        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false
 
 if args.save:
     if not os.path.exists(args.experiment):
@@ -321,11 +321,13 @@ if args.save:
         dict = vars(args)
         res = "\n".join(["{}: {}".format(e, dict[e]) for e in dict.keys()]) + "\n"
         f.write(res)
+    with open(os.path.join(args.experiment, dirName, "scores.csv"), "w") as f:
+        f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false)
 
 for epoch in range(1, args.epochs + 1):
     t = time()
     train_score = train(epoch)
-    test_score, loss = validation()
+    test_score, loss, mAP, acc_true, acc_false = validation()
     if args.save:
         model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
         torch.save(model.state_dict(), model_file)
@@ -333,5 +335,5 @@ for epoch in range(1, args.epochs + 1):
     elapsed_time = time() - t
     if args.save:
         with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
-            f.write("{:f},{:f},{:f},{:.2f}\n".format(train_score, test_score, loss, elapsed_time))
+            f.write("{:f},{:f},{:f},{:.2f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false))
     print("Elapsed time: ", elapsed_time)
