@@ -304,7 +304,7 @@ def validation():
         print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))
         print('True negative / negative: {:.4f}'.format(nb_true_false * 1. / nb_false))
     
-        return 100. * correct / len(val_loader.dataset)
+        return 100. * correct / len(val_loader.dataset), validation_loss
 
 if args.save:
     if not os.path.exists(args.experiment):
@@ -325,7 +325,7 @@ if args.save:
 for epoch in range(1, args.epochs + 1):
     t = time()
     train_score = train(epoch)
-    test_score = validation()
+    test_score, loss = validation()
     if args.save:
         model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
         torch.save(model.state_dict(), model_file)
@@ -333,5 +333,5 @@ for epoch in range(1, args.epochs + 1):
     elapsed_time = time() - t
     if args.save:
         with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
-            f.write("{:f},{:f},{:.2f}\n".format(train_score, test_score, elapsed_time))
+            f.write("{:f},{:f},{:f},{:.2f}\n".format(train_score, test_score, loss, elapsed_time))
     print("Elapsed time: ", elapsed_time)
