@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
         model.train()
         correct = 0
-        for batch_idx, (data, target, indices) in tqdm(enumerate(train_loader), total=len(train_loader), position=0, desc="training epoch : "+str(epoch)):
+        for batch_idx, (data, target, indices, _) in tqdm(enumerate(train_loader), total=len(train_loader), position=0, desc="training epoch : "+str(epoch)):
             if start_batch + batch_idx % 50000 == 0:
                 for param_group in optimizer.param_groups:
                     param_group["lr"] = args.lr * (0.1 ** ((start_batch + batch_idx) // 50000))
@@ -202,9 +202,9 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             output = model(data)
             if args.estimator_type == "class":
-                criterion = torch.nn.CrossEntropyLoss(reduction='mean')
+                criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
             else:
-                criterion = torch.nn.MSELoss(reduction="mean")
+                criterion = torch.nn.MSELoss(reduction="elementwise_mean")
                 target = target.float()
                 output = output[:,0]
             loss = criterion(output, target)
@@ -239,6 +239,7 @@ if __name__ == "__main__":
 def validation(model):
     retrieved = {}
     relevantAndRetrieved = {}
+    queries = {}
 
     nb_true = 0
     nb_true_true = 0
@@ -251,25 +252,35 @@ def validation(model):
         model.eval()
         validation_loss = 0
         correct = 0
-        for data, target, indices in tqdm(val_loader, position=0):
+        for data, target, indices, img_indices in tqdm(val_loader, position=0):
             if use_cuda:
                 data, target = data.cuda(args.gpu), target.cuda(args.gpu)
             output = model(data)
             # sum up batch loss
             if args.estimator_type == "class":
-                criterion = torch.nn.CrossEntropyLoss(reduction='mean')
+                criterion = torch.nn.CrossEntropyLoss(reduction='elementwise_mean')
             else:
-                criterion = torch.nn.MSELoss(reduction="mean")
+                criterion = torch.nn.MSELoss(reduction="elementwise_mean")
                 target = target.float()
                 output = output[:,0]
             validation_loss += criterion(output, target).data.item()
             # get the index of the max log-probability
             if args.estimator_type == "class":
+                score = output.data[:,1]
                 pred = output.data.max(1, keepdim=True)[1]
             else:
+                score = output.data
                 pred = output.data.round()
             correct += pred.eq(target.data.view_as(pred)).cpu().sum()
             for j in range(indices.size(0)):
+                query = int(img_indices[j, 0])
+                if query not in queries:
+                    queries[query] = []
+                queries[query].append((
+                    score[j].cpu().item(), 
+                    target[j].cpu().item()
+                ))
+
                 ref = int(indices[j, 0])
                 other = int(indices[j, 1])
 
@@ -292,6 +303,28 @@ def validation(model):
                     else:
                         nb_false_true += 1
 
+        true_mAP = 0
+        Q = 0
+        for q in queries.keys():
+            sorted_scores = sorted(queries[q], key=lambda x: x[0], reverse=False)
+            p_nom = 0
+            p_div = 0
+            cum_sum = 0
+            nb_rel = 0
+            for s in sorted_scores:
+                if s[0] >= 0.5:
+                    p_div += 1
+                    if s[1] == 1:
+                        p_nom += 1
+                if s[1] == 1:
+                    cum_sum += p_nom * 1. / max(1, p_div)
+                    nb_rel += 1
+            score = cum_sum * 1. / max(1, nb_rel)
+            if nb_rel > 0:
+                true_mAP += score
+                Q += 1
+        true_mAP /= max(1, Q)
+        
         scores = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys()]
         mAP = np.sum(scores) / len(scores) 
 
@@ -301,10 +334,11 @@ def validation(model):
         mAP2 = (nb_true * true_precision + nb_false * false_precision) / (nb_true + nb_false)
 
         validation_loss /= len(val_loader.dataset)
-        print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%)\n'.format(
+        print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%), new mAP: {:.2f}%\n'.format(
             validation_loss, correct, len(val_loader.dataset),
             100. * correct / len(val_loader.dataset),
-            100. * mAP
+            100. * mAP,
+            100. * true_mAP
         ))
 
         print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))

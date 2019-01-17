@@ -144,6 +144,7 @@ class SplitPageDataset(data.Dataset):
         fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
         sample1, sample2 = self.loader(fname_i), self.loader(fname_j)
         indices = torch.tensor([idA, idB], dtype=torch.int)
+        img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
         if self.transform_before is not None:
             sample1 = self.transform_before(sample1)
@@ -163,7 +164,7 @@ class SplitPageDataset(data.Dataset):
         if self.transform_true_after is not None and target == 1:
             sample = self.transform_true_after(sample)
 
-        return (sample, target, indices)
+        return (sample, target, indices, img_indices)
     
     def __len__(self):
         return self.length
@@ -329,7 +330,8 @@ class CustomDataset(data.Dataset):
 
         fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
         sample1, sample2 = self.loader(fname_i), self.loader(fname_j)
-        indices = torch.tensor([idA, idB], dtype=torch.int)
+        word_indices = torch.tensor([idA, idB], dtype=torch.int)
+        img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
         if self.transform_before is not None:
             sample1 = self.transform_before(sample1)
@@ -349,7 +351,7 @@ class CustomDataset(data.Dataset):
         if self.transform_true_after is not None and target == 1:
             sample = self.transform_true_after(sample)
 
-        return (sample, target, indices)
+        return (sample, target, word_indices, img_indices)
 
     def __len__(self):
         return self.length
