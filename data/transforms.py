@@ -355,4 +355,4 @@ class CustomDataset(data.Dataset):
         return self.length
 
     def get_info(self):
-        return len(self.true_pairs_id), len(self.true_pairs_id) + self.more_true, self.more_true
+        return len(self.true_pairs_id) + self.more_true, len(self.true_pairs_id), self.more_true

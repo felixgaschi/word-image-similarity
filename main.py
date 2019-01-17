@@ -38,7 +38,7 @@ if __name__ == "__main__":
     parser.add_argument('--eval-toy', type=bool, default=False)
     parser.add_argument('--train-toy', type=bool, default=False)
     parser.add_argument('--train-custom', type=bool, default=True)
-    parser.add_argument('--eval-custom', type=bool, default=True)
+    parser.add_argument('--eval-custom', type=bool, default=False)
     parser.add_argument('--preselect-false', type=bool, default=False)
     parser.add_argument('--keep-identical', type=bool, default=True)
     parser.add_argument('--augment', type=bool, default=True)
@@ -295,8 +295,10 @@ def validation(model):
         scores = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys()]
         mAP = np.sum(scores) / len(scores) 
 
-        true_precision = nb_true_true * 1. / (nb_true_true + nb_false_true)
-        false_precision = nb_true_false * 1. / (nb_true_false + nb_false_false)
+        true_precision = nb_true_true * 1. / (nb_true_true + nb_false_true) if nb_true_true > 0 else 0.
+        false_precision = nb_true_false * 1. / (nb_true_false + nb_false_false) if nb_true_false > 0 else 0.
+
+        mAP2 = (nb_true * true_precision + nb_false * false_precision) / (nb_true + nb_false)
 
         validation_loss /= len(val_loader.dataset)
         print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%)\n'.format(
@@ -310,8 +312,10 @@ def validation(model):
 
         print('Positive precision: {:.4f}'.format(true_precision))
         print('Negative precision: {:.4f}'.format(false_precision))
+    
+        print("mAP over pair classes: {:.4f}".format(mAP2))
         
-        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false, true_precision, false_precision
+        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false, true_precision, false_precision, mAP2
 
 if __name__ == "__main__":
 
@@ -331,12 +335,12 @@ if __name__ == "__main__":
             res = "\n".join(["{}: {}".format(e, dict[e]) for e in dict.keys()]) + "\n"
             f.write(res)
         with open(os.path.join(args.experiment, dirName, "scores.csv"), "w") as f:
-            f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false, true_P, false_P\n")
+            f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false, true_P, false_P, mAP2\n")
 
     for epoch in range(1, args.epochs + 1):
         t = time()
         train_score = train(epoch)
-        test_score, loss, mAP, acc_true, acc_false, true_P, false_P = validation(model)
+        test_score, loss, mAP, acc_true, acc_false, true_P, false_P, mAP2 = validation(model)
         if args.save:
             model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
             torch.save(model.state_dict(), model_file)
@@ -344,5 +348,5 @@ if __name__ == "__main__":
         elapsed_time = time() - t
         if args.save:
             with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
-                f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
+                f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P, mAP2))
         print("Elapsed time: ", elapsed_time)

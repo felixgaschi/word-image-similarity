@@ -70,4 +70,81 @@ else:
 dirName = os.path.join(args.experiment, args.model_name)
 model.load_state_dict(torch.load(dirName))
 
-validation(model)
+retrieved = {}
+relevantAndRetrieved = {}
+
+nb_true = 0
+nb_true_true = 0
+nb_false = 0
+nb_true_false = 0
+nb_false_true = 0
+nb_false_false = 0
+
+with torch.no_grad():
+    model.eval()
+    validation_loss = 0
+    correct = 0
+    for data, target, indices in tqdm(val_loader, position=0):
+        if use_cuda:
+            data, target = data.cuda(args.gpu), target.cuda(args.gpu)
+        output = model(data)
+        # sum up batch loss
+        if args.estimator_type == "class":
+            criterion = torch.nn.CrossEntropyLoss(reduction='mean')
+        else:
+            criterion = torch.nn.MSELoss(reduction="mean")
+            target = target.float()
+            output = output[:,0]
+        validation_loss += criterion(output, target).data.item()
+        # get the index of the max log-probability
+        if args.estimator_type == "class":
+            pred = output.data.max(1, keepdim=True)[1]
+        else:
+            pred = output.data.round()
+        correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+        for j in range(indices.size(0)):
+            ref = int(indices[j, 0])
+            other = int(indices[j, 1])
+
+            if pred[j].cpu().item() == 1:
+                if ref not in retrieved.keys():
+                    relevantAndRetrieved[ref] = 0
+                    retrieved[ref] = 0
+                retrieved[ref] += 1
+                if target[j].cpu().item() == 1:
+                    relevantAndRetrieved[ref] += 1
+                    nb_true_true += 1
+            if target[j].cpu().item() == 1:
+                nb_true += 1
+                if pred[j].cpu().item() == 0:
+                    nb_false_false += 1
+            else:
+                nb_false += 1
+                if pred[j].cpu().item() == 0:
+                    nb_true_false += 1
+                else:
+                    nb_false_true += 1
+
+    scores = [relevantAndRetrieved[i] * 1. / retrieved[i] if retrieved[i] > 0 else 0. for i in retrieved.keys()]
+    mAP = np.sum(scores) / len(scores) 
+
+    true_precision = nb_true_true * 1. / (nb_true_true + nb_false_true) if nb_true_true > 0 else 0.
+    false_precision = nb_true_false * 1. / (nb_true_false + nb_false_false) if nb_true_false > 0 else 0.
+
+    mAP2 = (nb_true * true_precision + nb_false * false_precision) / (nb_true + nb_false)
+
+    validation_loss /= len(val_loader.dataset)
+    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%), mAP: {:.2f}%)\n'.format(
+        validation_loss, correct, len(val_loader.dataset),
+        100. * correct / len(val_loader.dataset),
+        100. * mAP
+    ))
+
+    print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))
+    print('True negative / negative: {:.4f}'.format(nb_true_false * 1. / nb_false))
+
+    print('Positive precision: {:.4f}'.format(true_precision))
+    print('Negative precision: {:.4f}'.format(false_precision))
+    
+    print("mAP over pair classes: {:.4f}".format(mAP2))
+
