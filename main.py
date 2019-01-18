@@ -25,23 +25,37 @@ if __name__ == "__main__":
     parser.add_argument('--experiment', type=str, default='../results/', metavar='E',
                         help='folder where experiment outputs are located.')
     parser.add_argument('--name', type=str, default=None)
-    parser.add_argument('--save', type=bool, default=True)
+
+    parser.add_argument('--save', dest="save", action="store_true")
+    parser.add_argument('--no-save', dest="save", action="store_true")
+    parser.set_defaults(save=False)
+
     parser.add_argument('--nb-workers', type=int, default=1)
     parser.add_argument('--estimator-type', type=str, default="class")
-    parser.add_argument('--model', type=str, default="siamese")
+    parser.add_argument('--model', type=str, default="2channels")
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--optimizer', type=str, default="SGD")
     parser.add_argument('--nb-train', type=int, default=None)
     parser.add_argument('--nb-eval', type=int, default=None)
     parser.add_argument('--load', type=int, default=0)
     parser.add_argument('--nb-more', type=int, default=0)
-    parser.add_argument('--eval-toy', type=bool, default=False)
-    parser.add_argument('--train-toy', type=bool, default=False)
-    parser.add_argument('--train-custom', type=bool, default=True)
-    parser.add_argument('--eval-custom', type=bool, default=False)
-    parser.add_argument('--preselect-false', type=bool, default=False)
-    parser.add_argument('--keep-identical', type=bool, default=True)
-    parser.add_argument('--augment', type=bool, default=True)
+
+    parser.add_argument('--eval-type', type=str, default="whole",
+                        help="type of evaluation set, [toy, custom, whole]")
+    parser.add_argument('--train-type', type=str, default="whole",
+                        help="type of train set, [toy, custom, whole]")
+
+    parser.add_argument('--preselect-false', dest="preselect_false", action="store_true")
+    parser.add_argument('--no-preselect-false', dest="preselect_false", action="store_false")
+    parser.set_defaults(preselect_false=False)
+
+    parser.add_argument('--keep-identical', dest="keep_identical", action="store_true")
+    parser.add_argument('--no-keep-identical', dest="keep_identical", action="store_false")
+    parser.set_defaults(keep_identical=True)
+
+    parser.add_argument('--augment', dest="augment", action="store_true")
+    parser.add_argument('--no-augment', dest="augment", action="store_false")
+    parser.set_defaults(augment=True)
 
     args = parser.parse_args()
 
@@ -66,7 +80,7 @@ if __name__ == "__main__":
 
     import data
 
-    if args.train_toy:
+    if args.train_type == "toy":
         train_set = data.ToyDataset(
             args.data,
             begin=1,
@@ -79,7 +93,7 @@ if __name__ == "__main__":
             limit=args.nb_train,
             keep_identical=args.keep_identical
         )
-    elif args.train_custom:
+    elif args.train_type == "custom":
         train_set = data.CustomDataset(
             args.data,
             begin=1,
@@ -107,7 +121,7 @@ if __name__ == "__main__":
             keep_identical=args.keep_identical
         )
 
-    if args.eval_toy:
+    if args.eval_type == "toy":
         test_set = data.ToyDataset(
             args.data,
             begin=3687,
@@ -121,7 +135,7 @@ if __name__ == "__main__":
             preselect_false = args.preselect_false,
             keep_identical=args.keep_identical
         )
-    elif args.eval_custom:
+    elif args.eval_type == "custom":
         test_set = data.CustomDataset(
             args.data,
             begin=3687,
