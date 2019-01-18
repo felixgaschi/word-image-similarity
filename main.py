@@ -27,8 +27,12 @@ if __name__ == "__main__":
     parser.add_argument('--name', type=str, default=None)
 
     parser.add_argument('--save', dest="save", action="store_true")
-    parser.add_argument('--no-save', dest="save", action="store_true")
+    parser.add_argument('--no-save', dest="save", action="store_false")
     parser.set_defaults(save=False)
+
+    parser.add_argument("--save-queries", dest="save_queries", action="store_true")
+    parser.add_argument('--no-save-queries', dest="save_queries", action="store_false")
+    parser.set_defaults(save_queries=False)
 
     parser.add_argument('--nb-workers', type=int, default=1)
     parser.add_argument('--estimator-type', type=str, default="class")
@@ -291,6 +295,7 @@ def validation(model):
                 if query not in queries:
                     queries[query] = []
                 queries[query].append((
+                    int(img_indices[j, 1]),
                     score[j].cpu().item(), 
                     target[j].cpu().item()
                 ))
@@ -316,21 +321,21 @@ def validation(model):
                         nb_true_false += 1
                     else:
                         nb_false_true += 1
-
+        
         true_mAP = 0
         Q = 0
         for q in queries.keys():
-            sorted_scores = sorted(queries[q], key=lambda x: x[0], reverse=False)
+            sorted_scores = sorted(queries[q], key=lambda x: x[1], reverse=False)
             p_nom = 0
             p_div = 0
             cum_sum = 0
             nb_rel = 0
             for s in sorted_scores:
-                if s[0] >= 0.5:
+                if s[1] >= 0.5:
                     p_div += 1
-                    if s[1] == 1:
+                    if s[2] == 1:
                         p_nom += 1
-                if s[1] == 1:
+                if s[2] == 1:
                     cum_sum += p_nom * 1. / max(1, p_div)
                     nb_rel += 1
             score = cum_sum * 1. / max(1, nb_rel)
@@ -363,7 +368,7 @@ def validation(model):
     
         print("mAP over pair classes: {:.4f}".format(mAP2))
         
-        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false, true_precision, false_precision, mAP2
+        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false, true_precision, false_precision, mAP2, queries
 
 if __name__ == "__main__":
 
@@ -388,7 +393,21 @@ if __name__ == "__main__":
     for epoch in range(1, args.epochs + 1):
         t = time()
         train_score = train(epoch)
-        test_score, loss, mAP, acc_true, acc_false, true_P, false_P, mAP2 = validation(model)
+        test_score, loss, mAP, acc_true, acc_false, true_P, false_P, mAP2, queries = validation(model)
+        if args.save_queries:
+            if args.save:
+                path = os.path.join(args.experiment, dirName, "queries_{:d}.txt".format(epoch))
+            else:
+                path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
+            with open(path, "w") as f:
+                for q in queries.keys():
+                    line = ""
+                    line += "{}".format(q)
+                    for value in queries[q]:
+                        line += ",{}".format(value)
+                    line += "\n"
+                    f.write(line)
+
         if args.save:
             model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
             torch.save(model.state_dict(), model_file)
