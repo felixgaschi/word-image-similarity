@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--eval-type', type=str, default="whole",
                         help="type of evaluation set, [toy, custom, whole]")
-    parser.add_argument('--train-type', type=str, default="whole",
+    parser.add_argument('--train-type', type=str, default="custom",
                         help="type of train set, [toy, custom, whole]")
 
     parser.add_argument('--preselect-false', dest="preselect_false", action="store_true")
