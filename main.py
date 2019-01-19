@@ -61,6 +61,14 @@ if __name__ == "__main__":
     parser.add_argument('--no-augment', dest="augment", action="store_false")
     parser.set_defaults(augment=True)
 
+    parser.add_argument('--augment-false', dest="augment_false", action="store_true")
+    parser.add_argument('--no-augment-false', dest="augment_false", action="store_false")
+    parser.set_defaults(augment_false=False)
+
+    parser.add_argument('--binarize', dest="binarize", action="store_true")
+    parser.add_argument('--no-binarize', dest="binarize", action="store_false")
+    parser.set_defaults(binarize=False)
+
     args = parser.parse_args()
 
     use_cuda = torch.cuda.is_available()
@@ -89,10 +97,10 @@ if __name__ == "__main__":
             args.data,
             begin=1,
             end=3687,
-            transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
-            transform_after=data.train_transform_after,
-            transform_true_before=data.train_true_before,
-            transform_true_after=data.train_true_after,
+            transform_false_before=data.train_transform_false_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.train_transform_true_before(args),
+            transform_true_after=data.transform_after(args),
             more_true=args.nb_more,
             limit=args.nb_train,
             keep_identical=args.keep_identical
@@ -102,10 +110,10 @@ if __name__ == "__main__":
             args.data,
             begin=1,
             end=3687,
-            transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
-            transform_after=data.train_transform_after,
-            transform_true_before=data.train_true_before,
-            transform_true_after=data.train_true_after,
+            transform_false_before=data.train_transform_false_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.train_transform_true_before(args),
+            transform_true_after=data.transform_after(args),
             more_true=args.nb_more,
             limit=args.nb_train,
             preselect_false=args.preselect_false,
@@ -116,10 +124,10 @@ if __name__ == "__main__":
             args.data,
             begin=1,
             end=3687,
-            transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
-            transform_after=data.train_transform_after,
-            transform_true_before=data.train_true_before,
-            transform_true_after=data.train_true_after,
+            transform_false_before=data.train_transform_false_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.train_transform_true_before(args),
+            transform_true_after=data.transform_after(args),
             more_true=args.nb_more,
             limit=args.nb_train,
             keep_identical=args.keep_identical
@@ -130,10 +138,10 @@ if __name__ == "__main__":
             args.data,
             begin=3687,
             end=4860,
-            transform_before=data.validation_transform_before,
-            transform_after=data.validation_transform_after,
-            transform_true_before=None,
-            transform_true_after=None,
+            transform_false_before=data.validation_transform_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.validation_transform_before(args),
+            transform_true_after=data.transform_after(args),
             more_true=0,
             limit=args.nb_eval,
             preselect_false = args.preselect_false,
@@ -144,10 +152,10 @@ if __name__ == "__main__":
             args.data,
             begin=3687,
             end=4860,
-            transform_before=data.validation_transform_before,
-            transform_after=data.validation_transform_after,
-            transform_true_before=None,
-            transform_true_after=None,
+             transform_false_before=data.validation_transform_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.validation_transform_before(args),
+            transform_true_after=data.transform_after(args),
             more_true=0,
             limit=args.nb_eval,
             keep_identical=args.keep_identical
@@ -157,10 +165,10 @@ if __name__ == "__main__":
             args.data,
             begin=3687,
             end=4860,
-            transform_before=data.validation_transform_before,
-            transform_after=data.validation_transform_after,
-            transform_true_before=None,
-            transform_true_after=None,
+            transform_false_before=data.validation_transform_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.validation_transform_before(args),
+            transform_true_after=data.transform_after(args),
             more_true=0,
             limit=args.nb_eval,
             keep_identical=args.keep_identical

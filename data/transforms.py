@@ -7,6 +7,11 @@ from tqdm import tqdm
 import pickle as pk
 import numpy as np
 
+BINARY_MEAN = 0.91
+BINARY_STD = 0.24
+MEAN = 195.50
+STD = 43.39
+
 
 def jitter(img, S=(5,5)):
     a = np.array(img)
@@ -14,42 +19,48 @@ def jitter(img, S=(5,5)):
     y = np.random.randint(0, 2 * S[1] + 1)
     return Image.fromarray(a[x:a.shape[0] - 2 * S[0] + x,y:a.shape[1] - 2 * S[1] + y])
 
-def train_transform():
-    return transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Pad(np.random.randint(-10,11, size=2)),
-        transforms.CenterCrop(size=(100,40)),
-        transforms.Lambda(keep2chan),
-        transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
-    ])
+def train_transform_false_before(args):
+    trans = []
+    if args.augment_false:
+        trans.append(
+            transforms.Lambda(lambda x: jitter(x))
+        )
+    trans += [
+        transforms.Resize((40, 100))
+    ]
+    return transforms.Compose(trans)
 
-def validation_transform():
-    return transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Pad(np.random.randint(-10,11, size=2)),
-        transforms.CenterCrop(size=(100,40)),
-        transforms.Lambda(keep2chan),
-        transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
-    ])
+def transform_after(args):
+    trans = []
+    if args.binarize:
+        trans += [
+            transforms.Lambda(lambda x: x >128),
+            transforms.Lambda(lambda x: x.float()),
+            transforms.Normalize(mean=[BINARY_MEAN] * 2, std=[BINARY_STD] * 2)
+        ]
+    else:
+        trans += [
+            transforms.Normalize(mean=[MEAN] * 2, std=[STD] * 2)
+        ]
+    return transforms.Compose(trans)
 
-train_transform_before = transforms.Compose([
-    transforms.Lambda(lambda x: jitter(x)),
-    transforms.Resize((40, 100))
-])
-validation_transform_before = transforms.Resize((40, 100))
-train_transform_before_noaugment = transforms.Resize((40, 100))
+def train_transform_true_before(args):
+    trans = []
+    if args.augment:
+        trans.append(
+            transforms.Lambda(lambda x: jitter(x))
+        )
+    trans += [
+        transforms.Resize((40, 100)),
+    ]
+    return transforms.Compose(trans)
 
 
-train_transform_after = transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
-validation_transform_after = transforms.Normalize(mean=[0.45, 0.45], std=[0.22, 0.22])
-
-
+def validation_transform_before(args):
+    return transforms.Resize((40, 100))
 
 def noise(img, std=5):
     return img + torch.randn(img.size())*std
-
-train_true_before = None #transforms.RandomAffine(0,scale=[0.8,1.2])
-train_true_after = None # transforms.Lambda(noise)
 
 def grey_pil_loader(path):
     # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
@@ -60,8 +71,8 @@ def grey_pil_loader(path):
 class SplitPageDataset(data.Dataset):
 
     def __init__(self, root, begin=1, end=3697,
-                transform_before=None, 
-                transform_after=None,
+                transform_false_before=None, 
+                transform_false_after=None,
                 transform_true_before=None,
                 transform_true_after=None,
                 loader=grey_pil_loader,
@@ -72,8 +83,8 @@ class SplitPageDataset(data.Dataset):
         self.root = root
         self.begin = begin
         self.end = end
-        self.transform_before = transform_before
-        self.transform_after = transform_after
+        self.transform_false_before = transform_false_before
+        self.transform_false_after = transform_false_after
         self.transform_true_before = transform_true_before
         self.transform_true_after = transform_true_after
         self.loader = loader
@@ -146,9 +157,9 @@ class SplitPageDataset(data.Dataset):
         indices = torch.tensor([idA, idB], dtype=torch.int)
         img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
-        if self.transform_before is not None:
-            sample1 = self.transform_before(sample1)
-            sample2 = self.transform_before(sample2)
+        if self.transform_false_before is not None and target == 0:
+            sample1 = self.transform_false_before(sample1)
+            sample2 = self.transform_false_before(sample2)
 
         if self.transform_true_before is not None and target == 1:
             sample1 = self.transform_true_before(sample1)
@@ -158,8 +169,8 @@ class SplitPageDataset(data.Dataset):
         sample2 = transforms.ToTensor()(sample2)
         sample = torch.cat((sample1, sample2), 0)
 
-        if self.transform_after is not None:
-            sample = self.transform_after(sample)
+        if self.transform_false_after is not None and target == 0:
+            sample = self.transform_false_after(sample)
 
         if self.transform_true_after is not None and target == 1:
             sample = self.transform_true_after(sample)
@@ -237,8 +248,8 @@ class ToyDataset(SplitPageDataset):
 class CustomDataset(data.Dataset):
 
     def __init__(self, root, begin=1, end=3697,
-                transform_before=None, 
-                transform_after=None,
+                transform_false_before=None, 
+                transform_false_after=None,
                 transform_true_before=None,
                 transform_true_after=None,
                 loader=grey_pil_loader,
@@ -250,8 +261,8 @@ class CustomDataset(data.Dataset):
         self.root = root
         self.begin = begin
         self.end = end
-        self.transform_before = transform_before
-        self.transform_after = transform_after
+        self.transform_false_before = transform_false_before
+        self.transform_false_after = transform_false_after
         self.transform_true_before = transform_true_before
         self.transform_true_after = transform_true_after
         self.loader = loader
@@ -333,9 +344,9 @@ class CustomDataset(data.Dataset):
         word_indices = torch.tensor([idA, idB], dtype=torch.int)
         img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
-        if self.transform_before is not None:
-            sample1 = self.transform_before(sample1)
-            sample2 = self.transform_before(sample2)
+        if self.transform_false_before is not None and target == 0:
+            sample1 = self.transform_false_before(sample1)
+            sample2 = self.transform_false_before(sample2)
 
         if self.transform_true_before is not None and target == 1:
             sample1 = self.transform_true_before(sample1)
@@ -345,8 +356,8 @@ class CustomDataset(data.Dataset):
         sample2 = transforms.ToTensor()(sample2)
         sample = torch.cat((sample1, sample2), 0)
 
-        if self.transform_after is not None:
-            sample = self.transform_after(sample)
+        if self.transform_false_after is not None and target == 0:
+            sample = self.transform_false_after(sample)
 
         if self.transform_true_after is not None and target == 1:
             sample = self.transform_true_after(sample)
