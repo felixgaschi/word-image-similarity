@@ -99,8 +99,9 @@ class SplitPageDataset(data.Dataset):
                 w = line.strip()
                 words.append(w)
 
-        if self.end is None:
-            self.end = len(words)
+        if end is None:
+            end = len(words)
+        self.end = end
 
         with open(os.path.join(root, "words.txt"), "r") as f:
             for i, line in enumerate(f):
@@ -285,9 +286,10 @@ class CustomDataset(data.Dataset):
                 w = line.strip()
                 words.append(w)
 
-        if self.end is None:
-            self.end = len(words)
-
+        if end is None:
+            end = len(words)
+        self.end = end
+        
         with open(os.path.join(root, "words.txt"), "r") as f:
             for i, line in enumerate(f):
                 w = line.strip()
