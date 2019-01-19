@@ -1,6 +1,7 @@
 from mlxtend.data import loadlocal_mnist
 import argparse, os
 from PIL import Image
+from tqdm import tqdm
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generating matching dataset for MNIST')

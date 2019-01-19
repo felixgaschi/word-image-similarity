@@ -61,6 +61,8 @@ if __name__ == "__main__":
     parser.add_argument('--no-augment', dest="augment", action="store_false")
     parser.set_defaults(augment=True)
 
+    parser.add_argument('--split', type=int, default=3687)
+
     args = parser.parse_args()
 
     use_cuda = torch.cuda.is_available()
@@ -88,7 +90,7 @@ if __name__ == "__main__":
         train_set = data.ToyDataset(
             args.data,
             begin=1,
-            end=3687,
+            end=args.split,
             transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
             transform_after=data.train_transform_after,
             transform_true_before=data.train_true_before,
@@ -101,7 +103,7 @@ if __name__ == "__main__":
         train_set = data.CustomDataset(
             args.data,
             begin=1,
-            end=3687,
+            end=args.split,
             transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
             transform_after=data.train_transform_after,
             transform_true_before=data.train_true_before,
@@ -115,7 +117,7 @@ if __name__ == "__main__":
         train_set = data.SplitPageDataset(
             args.data,
             begin=1,
-            end=3687,
+            end=args.split,
             transform_before=data.train_transform_before if args.augment else data.train_transform_before_noaugment,
             transform_after=data.train_transform_after,
             transform_true_before=data.train_true_before,
@@ -129,7 +131,7 @@ if __name__ == "__main__":
         test_set = data.ToyDataset(
             args.data,
             begin=3687,
-            end=4860,
+            end=None,
             transform_before=data.validation_transform_before,
             transform_after=data.validation_transform_after,
             transform_true_before=None,
@@ -142,8 +144,8 @@ if __name__ == "__main__":
     elif args.eval_type == "custom":
         test_set = data.CustomDataset(
             args.data,
-            begin=3687,
-            end=4860,
+            begin=args.split,
+            end=None,
             transform_before=data.validation_transform_before,
             transform_after=data.validation_transform_after,
             transform_true_before=None,
@@ -155,8 +157,8 @@ if __name__ == "__main__":
     else:
         test_set = data.SplitPageDataset(
             args.data,
-            begin=3687,
-            end=4860,
+            begin=args.split,
+            end=None,
             transform_before=data.validation_transform_before,
             transform_after=data.validation_transform_after,
             transform_true_before=None,
@@ -326,6 +328,7 @@ def validation(model):
         Q = 0
         for q in queries.keys():
             sorted_scores = sorted(queries[q], key=lambda x: x[1], reverse=False)
+            queries[q] = sorted_scores
             p_nom = 0
             p_div = 0
             cum_sum = 0
@@ -400,7 +403,7 @@ if __name__ == "__main__":
             else:
                 path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
             with open(path, "w") as f:
-                for q in queries.keys():
+                for q in sorted(queries.keys()):
                     line = ""
                     line += "{}".format(q)
                     for value in queries[q]:

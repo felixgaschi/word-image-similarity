@@ -87,12 +87,18 @@ class SplitPageDataset(data.Dataset):
             for i, line in enumerate(f):
                 w = line.strip()
                 words.append(w)
+
+        if self.end is None:
+            self.end = len(words)
+
+        with open(os.path.join(root, "words.txt"), "r") as f:
+            for i, line in enumerate(f):
+                w = line.strip()
                 if i + 1 >= self.begin and i + 1 < self.end:
                     if w not in indices.keys():
                         indices[w] = [i + 1]
                     else:
                         indices[w].append(i + 1)
-        
 
         self.words = words
         self.indices = indices
@@ -267,12 +273,18 @@ class CustomDataset(data.Dataset):
             for i, line in enumerate(f):
                 w = line.strip()
                 words.append(w)
+
+        if self.end is None:
+            self.end = len(words)
+
+        with open(os.path.join(root, "words.txt"), "r") as f:
+            for i, line in enumerate(f):
+                w = line.strip()
                 if i + 1 >= self.begin and i + 1 < self.end:
                     if w not in indices.keys():
                         indices[w] = [i + 1]
                     else:
                         indices[w].append(i + 1)
-        
 
         self.words = words
         self.indices = indices
