@@ -68,6 +68,8 @@ if __name__ == "__main__":
     parser.add_argument('--binarize', dest="binarize", action="store_true")
     parser.add_argument('--no-binarize', dest="binarize", action="store_false")
     parser.set_defaults(binarize=False)
+    
+    parser.add_argument('--split', type=int, default=3687)
 
     args = parser.parse_args()
 
@@ -96,7 +98,7 @@ if __name__ == "__main__":
         train_set = data.ToyDataset(
             args.data,
             begin=1,
-            end=3687,
+            end=args.split,
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.train_transform_true_before(args),
@@ -109,7 +111,7 @@ if __name__ == "__main__":
         train_set = data.CustomDataset(
             args.data,
             begin=1,
-            end=3687,
+            end=args.split,
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.train_transform_true_before(args),
@@ -123,7 +125,7 @@ if __name__ == "__main__":
         train_set = data.SplitPageDataset(
             args.data,
             begin=1,
-            end=3687,
+            end=args.split,
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.train_transform_true_before(args),
@@ -136,8 +138,8 @@ if __name__ == "__main__":
     if args.eval_type == "toy":
         test_set = data.ToyDataset(
             args.data,
-            begin=3687,
-            end=4860,
+            begin=args.split,
+            end=None,
             transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.validation_transform_before(args),
@@ -150,8 +152,8 @@ if __name__ == "__main__":
     elif args.eval_type == "custom":
         test_set = data.CustomDataset(
             args.data,
-            begin=3687,
-            end=4860,
+            begin=args.split,
+            end=None,
              transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.validation_transform_before(args),
@@ -163,8 +165,8 @@ if __name__ == "__main__":
     else:
         test_set = data.SplitPageDataset(
             args.data,
-            begin=3687,
-            end=4860,
+            begin=args.split,
+            end=None,
             transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.validation_transform_before(args),
@@ -334,6 +336,7 @@ def validation(model):
         Q = 0
         for q in queries.keys():
             sorted_scores = sorted(queries[q], key=lambda x: x[1], reverse=False)
+            queries[q] = sorted_scores
             p_nom = 0
             p_div = 0
             cum_sum = 0
@@ -408,7 +411,7 @@ if __name__ == "__main__":
             else:
                 path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
             with open(path, "w") as f:
-                for q in queries.keys():
+                for q in sorted(queries.keys()):
                     line = ""
                     line += "{}".format(q)
                     for value in queries[q]:
