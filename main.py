@@ -77,6 +77,8 @@ if __name__ == "__main__":
     parser.add_argument('--remove_hard', dest="remove_hard", action="store_false")
     parser.set_defaults(normalize=False)
 
+    parser.add_argument('--matching', type=str, default="strict",
+                        help="[strict, lower, ponctuation, all]")
 
     parser.add_argument('--split', type=int, default=3687)
 
@@ -114,7 +116,8 @@ if __name__ == "__main__":
             transform_true_after=data.transform_after(args),
             more_true=args.nb_more,
             limit=args.nb_train,
-            keep_identical=args.keep_identical
+            keep_identical=args.keep_identical,
+            matching=args.matching
         )
     elif args.train_type == "custom":
         train_set = data.CustomDataset(
@@ -129,7 +132,8 @@ if __name__ == "__main__":
             limit=args.nb_train,
             preselect_false=args.preselect_false,
             keep_identical=args.keep_identical,
-            remove_hard=args.remove_hard
+            remove_hard=args.remove_hard,
+            matching=args.matching
         )
     else:
         train_set = data.SplitPageDataset(
@@ -143,6 +147,7 @@ if __name__ == "__main__":
             more_true=args.nb_more,
             limit=args.nb_train,
             keep_identical=args.keep_identical,
+            matching=args.matching
         )
 
     if args.eval_type == "toy":
@@ -157,7 +162,8 @@ if __name__ == "__main__":
             more_true=0,
             limit=args.nb_eval,
             preselect_false = args.preselect_false,
-            keep_identical=args.keep_identical
+            keep_identical=args.keep_identical,
+            matching=args.matching
         )
     elif args.eval_type == "custom":
         test_set = data.CustomDataset(
@@ -170,7 +176,8 @@ if __name__ == "__main__":
             transform_true_after=data.transform_after(args),
             more_true=0,
             limit=args.nb_eval,
-            keep_identical=args.keep_identical
+            keep_identical=args.keep_identical,
+            matching=args.matching
         )
     else:
         test_set = data.SplitPageDataset(
@@ -183,7 +190,8 @@ if __name__ == "__main__":
             transform_true_after=data.transform_after(args),
             more_true=0,
             limit=args.nb_eval,
-            keep_identical=args.keep_identical
+            keep_identical=args.keep_identical,
+            matching=args.matching
         )
 
     train_loader = torch.utils.data.DataLoader(

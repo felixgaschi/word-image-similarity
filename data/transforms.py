@@ -16,6 +16,13 @@ STD = 0.17
 def normalize_string(word):
     return re.sub("^[A-za-z]+", "", word).lower()
 
+string_transform = {
+    "strict": lambda w: w,
+    "lower": lambda w: w.lower(),
+    "ponctuation": lambda w: re.sub("^[A-za-z]+", "", w),
+    "all": lambda w: re.sub("^[A-za-z]+", "", w).lower()
+}
+
 
 def jitter(img, S=(5,5)):
     a = np.array(img)
@@ -86,6 +93,7 @@ class SplitPageDataset(data.Dataset):
                 more_true=0,
                 limit=None,
                 keep_identical=False,
+                matching="strict"
                 ):
         self.root = root
         self.begin = begin
@@ -97,13 +105,14 @@ class SplitPageDataset(data.Dataset):
         self.loader = loader
         self.more_true = more_true
         self.keep_identical = keep_identical
+        self.transform = string_transform[matching]
 
         words = []
         indices = {}
 
         with open(os.path.join(root, "words.txt"), "r") as f:
             for i, line in enumerate(f):
-                w = line.strip()
+                w = self.transform(line.strip())
                 words.append(w)
 
         if end is None:
@@ -112,7 +121,7 @@ class SplitPageDataset(data.Dataset):
 
         with open(os.path.join(root, "words.txt"), "r") as f:
             for i, line in enumerate(f):
-                w = line.strip()
+                w = self.transform(line.strip())
                 if i + 1 >= self.begin and i + 1 < self.end:
                     if w not in indices.keys():
                         indices[w] = [i + 1]
@@ -271,7 +280,8 @@ class CustomDataset(data.Dataset):
                 limit=None,
                 keep_identical=False,
                 preselect_false=False,
-                remove_hard=False):
+                remove_hard=False,
+                matching="strict"):
 
         self.root = root
         self.begin = begin
@@ -286,13 +296,14 @@ class CustomDataset(data.Dataset):
         self.limit = limit
         self.preselect_false = preselect_false
         self.remove_hard = remove_hard
+        self.transform = string_transform[matching]
 
         words = []
         indices = {}
 
         with open(os.path.join(root, "words.txt"), "r") as f:
             for i, line in enumerate(f):
-                w = line.strip()
+                w = self.transform(line.strip())
                 words.append(w)
 
         if end is None:
@@ -301,7 +312,7 @@ class CustomDataset(data.Dataset):
         
         with open(os.path.join(root, "words.txt"), "r") as f:
             for i, line in enumerate(f):
-                w = line.strip()
+                w = self.transform(line.strip())
                 if i + 1 >= self.begin and i + 1 < self.end:
                     if w not in indices.keys():
                         indices[w] = [i + 1]
