@@ -9,8 +9,8 @@ import numpy as np
 
 BINARY_MEAN = 0.91
 BINARY_STD = 0.24
-MEAN = 195.50
-STD = 43.39
+MEAN = 0.77
+STD = 0.17
 
 
 def jitter(img, S=(5,5)):
@@ -34,7 +34,7 @@ def transform_after(args):
     trans = []
     if args.binarize:
         trans += [
-            transforms.Lambda(lambda x: x >128),
+            transforms.Lambda(lambda x: x > 0.5),
             transforms.Lambda(lambda x: x.float()),
             transforms.Normalize(mean=[BINARY_MEAN] * 2, std=[BINARY_STD] * 2)
         ]
