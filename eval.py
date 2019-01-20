@@ -19,6 +19,14 @@ parser.add_argument('--gpu', type=int, default=0)
 parser.add_argument('--nb-workers', type=int, default=1)
 parser.add_argument('--lim', type=int, default=None)
 
+parser.add_argument('--binarize', dest="binarize", action="store_true")
+parser.add_argument('--no-binarize', dest="binarize", action="store_false")
+parser.set_defaults(binarize=False)
+
+parser.add_argument('--normalize', dest="normalize", action="store_true")
+parser.add_argument('--no-normalize', dest="normalize", action="store_false")
+parser.set_defaults(normalize=True)
+
 args = parser.parse_args()
 
 use_cuda = torch.cuda.is_available()
@@ -47,10 +55,10 @@ test_set = data.SplitPageDataset(
     args.data,
     begin=3687,
     end=4860,
-    transform_before=data.validation_transform_before,
-    transform_after=data.validation_transform_after,
-    transform_true_before=None,
-    transform_true_after=None,
+    transform_false_before=data.validation_transform_before(args),
+    transform_false_after=data.transform_after(args),
+    transform_true_before=data.validation_transform_before(args),
+    transform_true_after=data.transform_after(args),
     more_true=0,
     keep_identical=True,
     limit=args.lim
