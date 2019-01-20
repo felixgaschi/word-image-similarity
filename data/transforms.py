@@ -6,11 +6,15 @@ import os
 from tqdm import tqdm
 import pickle as pk
 import numpy as np
+import re
 
 BINARY_MEAN = 0.91
 BINARY_STD = 0.24
 MEAN = 0.77
 STD = 0.17
+
+def normalize_string(word):
+    return re.sub("^[A-za-z]+", "", word).lower()
 
 
 def jitter(img, S=(5,5)):
@@ -81,7 +85,7 @@ class SplitPageDataset(data.Dataset):
                 loader=grey_pil_loader,
                 more_true=0,
                 limit=None,
-                keep_identical=False
+                keep_identical=False,
                 ):
         self.root = root
         self.begin = begin
@@ -266,7 +270,8 @@ class CustomDataset(data.Dataset):
                 more_true=0,
                 limit=None,
                 keep_identical=False,
-                preselect_false=False):
+                preselect_false=False,
+                remove_hard=False):
 
         self.root = root
         self.begin = begin
@@ -280,6 +285,7 @@ class CustomDataset(data.Dataset):
         self.keep_identical = keep_identical
         self.limit = limit
         self.preselect_false = preselect_false
+        self.remove_hard = remove_hard
 
         words = []
         indices = {}
@@ -332,6 +338,8 @@ class CustomDataset(data.Dataset):
             while len(self.false_pairs_id) < self.nb_true:
                 i, j = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
                 if self.words[i] != self.words[j] and (i, j) not in self.false_pairs_id:
+                    if remove_hard and normalize_string(self.words[i]) == normalize_string(self.words[j]):
+                        continue
                     self.false_pairs_id.append((i, j))
                     pbar2.update(1)
             pbar2.close()
@@ -350,7 +358,8 @@ class CustomDataset(data.Dataset):
                 indexA, indexB = self.false_pairs_id[index // 2]
             else:
                 indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
-                while self.words[indexA] != self.words[indexB]:
+                while self.words[indexA] == self.words[indexB] or \
+                        (self.remove_hard and normalize_string(self.words[indexA]) == normalize_string(self.words[indexB])):
                     indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
             target = 0
         w1, w2 = self.words[indexA], self.words[indexB]
@@ -386,3 +395,5 @@ class CustomDataset(data.Dataset):
 
     def get_info(self):
         return len(self.true_pairs_id) + self.more_true, len(self.true_pairs_id), self.more_true
+
+    

@@ -71,6 +71,10 @@ if __name__ == "__main__":
     
     parser.add_argument('--normalize', dest="normalize", action="store_true")
     parser.add_argument('--no-normalize', dest="normalize", action="store_false")
+    parser.set_defaults(normalize=True)
+
+    parser.add_argument('--remove-hard', dest="remove_hard", action="store_true")
+    parser.add_argument('--remove_hard', dest="remove_hard", action="store_false")
     parser.set_defaults(normalize=False)
 
 
@@ -124,7 +128,8 @@ if __name__ == "__main__":
             more_true=args.nb_more,
             limit=args.nb_train,
             preselect_false=args.preselect_false,
-            keep_identical=args.keep_identical
+            keep_identical=args.keep_identical,
+            remove_hard=args.remove_hard
         )
     else:
         train_set = data.SplitPageDataset(
@@ -137,7 +142,7 @@ if __name__ == "__main__":
             transform_true_after=data.transform_after(args),
             more_true=args.nb_more,
             limit=args.nb_train,
-            keep_identical=args.keep_identical
+            keep_identical=args.keep_identical,
         )
 
     if args.eval_type == "toy":
