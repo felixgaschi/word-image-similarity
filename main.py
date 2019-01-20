@@ -462,5 +462,5 @@ if __name__ == "__main__":
         elapsed_time = time() - t
         if args.save:
             with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
-                f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
+                f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
         print("Elapsed time: ", elapsed_time)
