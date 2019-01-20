@@ -69,6 +69,11 @@ if __name__ == "__main__":
     parser.add_argument('--no-binarize', dest="binarize", action="store_false")
     parser.set_defaults(binarize=False)
     
+    parser.add_argument('--normalize', dest="normalize", action="store_true")
+    parser.add_argument('--no-normalize', dest="normalize", action="store_false")
+    parser.set_defaults(normalize=False)
+
+
     parser.add_argument('--split', type=int, default=3687)
 
     args = parser.parse_args()

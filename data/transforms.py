@@ -36,9 +36,12 @@ def transform_after(args):
         trans += [
             transforms.Lambda(lambda x: x > 0.5),
             transforms.Lambda(lambda x: x.float()),
-            transforms.Normalize(mean=[BINARY_MEAN] * 2, std=[BINARY_STD] * 2)
         ]
-    else:
+        if args.normalize:
+            trans.append(
+                transforms.Normalize(mean=[BINARY_MEAN] * 2, std=[BINARY_STD] * 2)
+            )
+    elif args.normalize:
         trans += [
             transforms.Normalize(mean=[MEAN] * 2, std=[STD] * 2)
         ]
