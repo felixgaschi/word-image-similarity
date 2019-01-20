@@ -140,7 +140,7 @@ class SplitPageDataset(data.Dataset):
         self.length = self.limit + self.more_true
     
     def get_file(self, id):
-        return os.path.join(self.root, "word-{:06d}.png".format(id))
+        return os.path.join(self.root, "word-{:06d}.png".format(id + 1))
 
     def get_indices_target(self, index):
         if index < self.limit:
