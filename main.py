@@ -235,16 +235,17 @@ if __name__ == "__main__":
         nb_false, nb_true, more_true
     ))
 
+    if args.load != "":
+        dirName = args.load
+        model.load_state_dict(torch.load(dirName))
+        model.eval()
+
     if use_cuda:
         print('Using GPU')
         model.cuda(args.gpu)
     else:
         print('Using CPU')
 
-    if args.load :
-        dirName = args.load
-        model.load_state_dict(torch.load(dirName))
-        model.eval()
 
     if args.optimizer == "SGD" :
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=0.0002)
