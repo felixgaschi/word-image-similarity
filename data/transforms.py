@@ -34,7 +34,7 @@ def train_transform_false_before(args):
     trans = []
     if args.shearing > 0.:
         trans.append(
-            transforms.RandomAffine(0,shear(-args.shearing, args.shearing))
+            transforms.RandomAffine(0,shear=(-args.shearing, args.shearing))
         )
     if args.augment_false:
         trans.append(
@@ -66,7 +66,7 @@ def train_transform_true_before(args):
     trans = []
     if args.shearing > 0.:
         trans.append(
-            transforms.RandomAffine(0,shear(-args.shearing, args.shearing))
+            transforms.RandomAffine(0,shear=(-args.shearing, args.shearing))
         )
     if args.augment:
         trans.append(
