@@ -77,6 +77,8 @@ if __name__ == "__main__":
     parser.add_argument('--remove_hard', dest="remove_hard", action="store_false")
     parser.set_defaults(normalize=False)
 
+    parser.add_argument('--shearing', type=float, default=0.0)
+
     parser.add_argument('--matching', type=str, default="strict",
                         help="[strict, lower, ponctuation, all]")
 

@@ -32,6 +32,10 @@ def jitter(img, S=(5,5)):
 
 def train_transform_false_before(args):
     trans = []
+    if args.shearing > 0.:
+        trans.append(
+            transforms.RandomAffine(0,shear(-args.shearing, args.shearing))
+        )
     if args.augment_false:
         trans.append(
             transforms.Lambda(lambda x: jitter(x))
@@ -60,6 +64,10 @@ def transform_after(args):
 
 def train_transform_true_before(args):
     trans = []
+    if args.shearing > 0.:
+        trans.append(
+            transforms.RandomAffine(0,shear(-args.shearing, args.shearing))
+        )
     if args.augment:
         trans.append(
             transforms.Lambda(lambda x: jitter(x))
