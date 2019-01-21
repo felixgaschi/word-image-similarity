@@ -41,13 +41,17 @@ if __name__ == "__main__":
     parser.add_argument('--optimizer', type=str, default="SGD")
     parser.add_argument('--nb-train', type=int, default=None)
     parser.add_argument('--nb-eval', type=int, default=None)
-    parser.add_argument('--load', type=int, default=0)
+    parser.add_argument('--load', type=str, default="")
     parser.add_argument('--nb-more', type=int, default=0)
 
     parser.add_argument('--eval-type', type=str, default="whole",
                         help="type of evaluation set, [toy, custom, whole]")
     parser.add_argument('--train-type', type=str, default="custom",
                         help="type of train set, [toy, custom, whole]")
+
+    parser.add_argument('--eval-only', dest="eval_only", action="store_true")
+    parser.add_argument('--no-eval-only', dest="eval_only", action="store_false")
+    parser.set_defaults(eval_only=False)
 
     parser.add_argument('--preselect-false', dest="preselect_false", action="store_true")
     parser.add_argument('--no-preselect-false', dest="preselect_false", action="store_false")
@@ -181,6 +185,20 @@ if __name__ == "__main__":
             keep_identical=args.keep_identical,
             matching=args.matching
         )
+    elif args.eval_type == "validation":
+        test_set = data.ValidationDataset(
+            args.data,
+            begin=args.split,
+            end=None,
+            transform_false_before=data.validation_transform_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.validation_transform_before(args),
+            transform_true_after=data.transform_after(args),
+            more_true=0,
+            limit=args.nb_eval,
+            keep_identical=args.keep_identical,
+            matching=args.matching
+        )
     else:
         test_set = data.SplitPageDataset(
             args.data,
@@ -223,8 +241,8 @@ if __name__ == "__main__":
         print('Using CPU')
 
     if args.load :
-        dirName = "/exp-{:05d}".format(args.load)
-        model.load_state_dict(torch.load(args.experiment + dirName + '.pth'))
+        dirName = args.load
+        model.load_state_dict(torch.load(dirName))
         model.eval()
 
     if args.optimizer == "SGD" :
@@ -447,30 +465,33 @@ if __name__ == "__main__":
         with open(os.path.join(args.experiment, dirName, "scores.csv"), "w") as f:
             f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false, true_P, false_P\n")
 
-    for epoch in range(1, args.epochs + 1):
-        t = time()
-        train_score = train(epoch)
-        test_score, loss, mAP, acc_true, acc_false, true_P, false_P,  queries = validation(model)
-        if args.save_queries:
-            if args.save:
-                path = os.path.join(args.experiment, dirName, "queries_{:d}.txt".format(epoch))
-            else:
-                path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
-            with open(path, "w") as f:
-                for q in sorted(queries.keys()):
-                    line = ""
-                    line += "{}".format(q)
-                    for value in queries[q]:
-                        line += ",{}".format(value)
-                    line += "\n"
-                    f.write(line)
+    if args.eval_only:
+        validation(model)
+    else:
+        for epoch in range(1, args.epochs + 1):
+            t = time()
+            train_score = train(epoch)
+            test_score, loss, mAP, acc_true, acc_false, true_P, false_P,  queries = validation(model)
+            if args.save_queries:
+                if args.save:
+                    path = os.path.join(args.experiment, dirName, "queries_{:d}.txt".format(epoch))
+                else:
+                    path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
+                with open(path, "w") as f:
+                    for q in sorted(queries.keys()):
+                        line = ""
+                        line += "{}".format(q)
+                        for value in queries[q]:
+                            line += ",{}".format(value)
+                        line += "\n"
+                        f.write(line)
 
-        if args.save:
-            model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
-            torch.save(model.state_dict(), model_file)
-            print('\nSaved model to ' + model_file)
-        elapsed_time = time() - t
-        if args.save:
-            with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
-                f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
-        print("Elapsed time: ", elapsed_time)
+            if args.save:
+                model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
+                torch.save(model.state_dict(), model_file)
+                print('\nSaved model to ' + model_file)
+            elapsed_time = time() - t
+            if args.save:
+                with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
+                    f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
+            print("Elapsed time: ", elapsed_time)
