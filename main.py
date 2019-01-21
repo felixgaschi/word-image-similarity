@@ -25,6 +25,7 @@ if __name__ == "__main__":
     parser.add_argument('--experiment', type=str, default='../results/', metavar='E',
                         help='folder where experiment outputs are located.')
     parser.add_argument('--name', type=str, default=None)
+    parser.add_argument('--eval-freq', type=int, default=1)
 
     parser.add_argument('--save', dest="save", action="store_true")
     parser.add_argument('--no-save', dest="save", action="store_false")
@@ -471,27 +472,28 @@ if __name__ == "__main__":
         for epoch in range(1, args.epochs + 1):
             t = time()
             train_score = train(epoch)
-            test_score, loss, mAP, acc_true, acc_false, true_P, false_P,  queries = validation(model)
-            if args.save_queries:
-                if args.save:
-                    path = os.path.join(args.experiment, dirName, "queries_{:d}.txt".format(epoch))
-                else:
-                    path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
-                with open(path, "w") as f:
-                    for q in sorted(queries.keys()):
-                        line = ""
-                        line += "{}".format(q)
-                        for value in queries[q]:
-                            line += ",{}".format(value)
-                        line += "\n"
-                        f.write(line)
+            if epoch % args.eval_freq == 0:
+                test_score, loss, mAP, acc_true, acc_false, true_P, false_P,  queries = validation(model)
+                if args.save_queries:
+                    if args.save:
+                        path = os.path.join(args.experiment, dirName, "queries_{:d}.txt".format(epoch))
+                    else:
+                        path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
+                    with open(path, "w") as f:
+                        for q in sorted(queries.keys()):
+                            line = ""
+                            line += "{}".format(q)
+                            for value in queries[q]:
+                                line += ",{}".format(value)
+                            line += "\n"
+                            f.write(line)
 
-            if args.save:
-                model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
-                torch.save(model.state_dict(), model_file)
-                print('\nSaved model to ' + model_file)
+                if args.save:
+                    model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
+                    torch.save(model.state_dict(), model_file)
+                    print('\nSaved model to ' + model_file)
+                    with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
+                        f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
+            
             elapsed_time = time() - t
-            if args.save:
-                with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
-                    f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
             print("Elapsed time: ", elapsed_time)
