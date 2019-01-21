@@ -185,6 +185,20 @@ if __name__ == "__main__":
             keep_identical=args.keep_identical,
             matching=args.matching
         )
+    elif args.eval_type == "validation":
+        test_set = data.ValidationDataset(
+            args.data,
+            begin=args.split,
+            end=None,
+            transform_false_before=data.validation_transform_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.validation_transform_before(args),
+            transform_true_after=data.transform_after(args),
+            more_true=0,
+            limit=args.nb_eval,
+            keep_identical=args.keep_identical,
+            matching=args.matching
+        )
     else:
         test_set = data.SplitPageDataset(
             args.data,

@@ -416,3 +416,29 @@ class CustomDataset(data.Dataset):
         return len(self.true_pairs_id) + self.more_true, len(self.true_pairs_id), self.more_true
 
     
+class ValidationDataset(SplitPageDataset):
+
+    def __init__(self, *args, **kwargs):
+        super(ValidationDataset, self).__init__(*args, **kwargs)
+
+        self.queries = []
+        for w in self.indices.keys():
+            if len(self.indices[w]) > 1:
+                self.queries += self.indices[w]
+        
+        if "limit" in kwargs.keys() and kwargs["limit"] is not None:
+            self.length = kwargs["limit"]
+        else:
+            self.length = len(self.queries) * (self.end - self.begin)
+    
+
+    def get_indices_target(self, index):
+        indexA = index // (self.end - self.begin)
+        indexB = self.begin + index % (self.end - self.begin)
+        w1, w2 = self.words[indexA], self.words[indexB]
+        if w1 == w2:
+            target = 1
+        else:
+            target = 0
+        idA, idB = self.word2id[w1], self.word2id[w2]
+        return indexA, indexB, target, idA, idB
