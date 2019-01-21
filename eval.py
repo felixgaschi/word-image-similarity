@@ -173,4 +173,3 @@ with torch.no_grad():
     print('Positive precision: {:.4f}'.format(true_precision))
     print('Negative precision: {:.4f}'.format(false_precision))
     
-    return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false, true_precision, false_precision, queries
