@@ -79,8 +79,8 @@ if __name__ == "__main__":
     parser.set_defaults(normalize=True)
 
     parser.add_argument('--remove-hard', dest="remove_hard", action="store_true")
-    parser.add_argument('--remove_hard', dest="remove_hard", action="store_false")
-    parser.set_defaults(normalize=False)
+    parser.add_argument('--no-remove_hard', dest="remove_hard", action="store_false")
+    parser.set_defaults(remove_hard=False)
 
     parser.add_argument('--shearing', type=float, default=0.0)
 
@@ -474,7 +474,7 @@ if __name__ == "__main__":
             t = time()
             train_score = train(epoch)
             if epoch % args.eval_freq == 0:
-                test_score, loss, mAP, acc_true, acc_false, true_P, false_P,  queries = validation(model)
+                test_score, loss, mAP, acc_true, acc_false, true_P, false_P, queries = validation(model)
                 if args.save_queries:
                     if args.save:
                         path = os.path.join(args.experiment, dirName, "queries_{:d}.txt".format(epoch))
@@ -488,6 +488,7 @@ if __name__ == "__main__":
                                 line += ",{}".format(value)
                             line += "\n"
                             f.write(line)
+                elapsed_time = time() - t
 
                 if args.save:
                     model_file = os.path.join(args.experiment, dirName, 'model_' + str(epoch) + '.pth')
@@ -496,5 +497,4 @@ if __name__ == "__main__":
                     with open(os.path.join(args.experiment, dirName, "scores.csv"), "a") as f:
                         f.write("{:f},{:f},{:f},{:.2f},{:f},{:f},{:f},{:f},{:f}\n".format(train_score, test_score, loss, elapsed_time, mAP, acc_true, acc_false, true_P, false_P))
             
-            elapsed_time = time() - t
-            print("Elapsed time: ", elapsed_time)
+                print("Elapsed time: ", elapsed_time)
