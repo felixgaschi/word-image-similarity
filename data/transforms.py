@@ -130,7 +130,7 @@ class SplitPageDataset(data.Dataset):
         with open(os.path.join(root, "words.txt"), "r") as f:
             for i, line in enumerate(f):
                 w = self.transform(line.strip())
-                if i + 1 >= self.begin and i + 1 < self.end:
+                if i >= self.begin and i < self.end:
                     if w not in indices.keys():
                         indices[w] = [i + 1]
                     else:
@@ -419,9 +419,10 @@ class CustomDataset(data.Dataset):
 class ValidationDataset(SplitPageDataset):
 
     def __init__(self, *args, **kwargs):
+        self.queries = []
+
         super(ValidationDataset, self).__init__(*args, **kwargs)
 
-        self.queries = []
         for w in self.indices.keys():
             if len(self.indices[w]) > 1:
                 self.queries += self.indices[w]
@@ -433,8 +434,12 @@ class ValidationDataset(SplitPageDataset):
     
 
     def get_indices_target(self, index):
-        indexA = index // (self.end - self.begin)
-        indexB = self.begin + index % (self.end - self.begin)
+        if self.queries == []:
+            return super(ValidationDataset, self).get_indices_target(index)
+        indexA = self.queries[index // (self.end - self.begin)] - 1
+        indexB = self.begin + index % (self.end - self.begin - 1)
+        if indexB >= indexA:
+            indexB += 1
         w1, w2 = self.words[indexA], self.words[indexB]
         if w1 == w2:
             target = 1

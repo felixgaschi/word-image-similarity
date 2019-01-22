@@ -87,7 +87,7 @@ if __name__ == "__main__":
     parser.add_argument('--matching', type=str, default="strict",
                         help="[strict, lower, ponctuation, all]")
 
-    parser.add_argument('--split', type=int, default=3687)
+    parser.add_argument('--split', type=int, default=3698)
 
     args = parser.parse_args()
 
@@ -318,7 +318,7 @@ if __name__ == "__main__":
         mAP = 0
         Q = 0
         for q in queries.keys():
-            sorted_scores = sorted(queries[q], key=lambda x: x[1], reverse=False)
+            sorted_scores = sorted(queries[q], key=lambda x: x[1], reverse=True)
             queries[q] = sorted_scores
             p_nom = 0
             p_div = 0
@@ -409,7 +409,7 @@ def validation(model):
         mAP = 0
         Q = 0
         for q in queries.keys():
-            sorted_scores = sorted(queries[q], key=lambda x: x[1], reverse=False)
+            sorted_scores = sorted(queries[q], key=lambda x: x[1], reverse=True)
             queries[q] = sorted_scores
             p_nom = 0
             p_div = 0
