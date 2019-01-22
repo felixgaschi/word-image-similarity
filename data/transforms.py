@@ -431,6 +431,7 @@ class ValidationDataset(SplitPageDataset):
             self.length = kwargs["limit"]
         else:
             self.length = len(self.queries) * (self.end - self.begin)
+            self.limit = self.length
     
 
     def get_indices_target(self, index):
