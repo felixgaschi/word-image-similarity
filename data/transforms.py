@@ -14,13 +14,13 @@ MEAN = 0.77
 STD = 0.17
 
 def normalize_string(word):
-    return re.sub("^[A-za-z0-9]+", "", word).lower()
+    return re.sub("[^\w\s]", "", word).lower()
 
 string_transform = {
     "strict": lambda w: w,
     "lower": lambda w: w.lower(),
-    "ponctuation": lambda w: re.sub("^[A-za-z0-9]+", "", w),
-    "all": lambda w: re.sub("^[A-za-z0-9]+", "", w).lower()
+    "ponctuation": lambda w: re.sub("[^\w\s]", "", w),
+    "all": lambda w: re.sub("[^\w\s]", "", w).lower()
 }
 
 
