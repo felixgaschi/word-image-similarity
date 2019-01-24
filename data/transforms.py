@@ -30,8 +30,22 @@ def jitter(img, S=(5,5)):
     y = np.random.randint(0, 2 * S[1] + 1)
     return Image.fromarray(a[x:a.shape[0] - 2 * S[0] + x,y:a.shape[1] - 2 * S[1] + y])
 
+def equalize(img, args):
+    hist = np.loadtxt(os.path.join(args.data, "history.txt"))
+    arr = np.array(img)
+    arr2 = np.zeros(arr.shape)
+    for i in range(arr.shape[0]):
+        for j in range(arr.shape[1]):
+            index = int(arr[i, j])
+            arr2[i, j] = 255 * np.sum(hist[:index + 1])
+    return Image.fromarray(arr2)
+
 def train_transform_false_before(args):
     trans = []
+    if args.equalize:
+        trans.append(
+            transforms.Lambda(lambda x: equalize(x, args))
+        )
     if args.shearing > 0.:
         trans.append(
             transforms.RandomAffine(0,shear=(-args.shearing, args.shearing))

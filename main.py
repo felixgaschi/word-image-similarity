@@ -74,6 +74,10 @@ if __name__ == "__main__":
     parser.add_argument('--no-binarize', dest="binarize", action="store_false")
     parser.set_defaults(binarize=False)
     
+    parser.add_argument('--equalize', dest="equalize", action="store_true")
+    parser.add_argument('--no-equalize', dest="equalize", action="store_false")
+    parser.set_defaults(equalize=True)
+
     parser.add_argument('--normalize', dest="normalize", action="store_true")
     parser.add_argument('--no-normalize', dest="normalize", action="store_false")
     parser.set_defaults(normalize=True)
