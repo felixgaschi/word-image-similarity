@@ -45,7 +45,7 @@ if __name__ == "__main__":
     parser.add_argument('--load', type=str, default="")
     parser.add_argument('--nb-more', type=int, default=0)
 
-    parser.add_argument('--eval-type', type=str, default="whole",
+    parser.add_argument('--eval-type', type=str, default="validation",
                         help="type of evaluation set, [toy, custom, whole]")
     parser.add_argument('--train-type', type=str, default="custom",
                         help="type of train set, [toy, custom, whole]")
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--keep-identical', dest="keep_identical", action="store_true")
     parser.add_argument('--no-keep-identical', dest="keep_identical", action="store_false")
-    parser.set_defaults(keep_identical=True)
+    parser.set_defaults(keep_identical=False)
 
     parser.add_argument('--augment', dest="augment", action="store_true")
     parser.add_argument('--no-augment', dest="augment", action="store_false")
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--augment-false', dest="augment_false", action="store_true")
     parser.add_argument('--no-augment-false', dest="augment_false", action="store_false")
-    parser.set_defaults(augment_false=False)
+    parser.set_defaults(augment_false=True)
 
     parser.add_argument('--binarize', dest="binarize", action="store_true")
     parser.add_argument('--no-binarize', dest="binarize", action="store_false")
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     
     parser.add_argument('--equalize', dest="equalize", action="store_true")
     parser.add_argument('--no-equalize', dest="equalize", action="store_false")
-    parser.set_defaults(equalize=True)
+    parser.set_defaults(equalize=False)
 
     parser.add_argument('--normalize', dest="normalize", action="store_true")
     parser.add_argument('--no-normalize', dest="normalize", action="store_false")
