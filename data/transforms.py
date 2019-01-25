@@ -444,7 +444,10 @@ class ValidationDataset(SplitPageDataset):
         if "limit" in kwargs.keys() and kwargs["limit"] is not None:
             self.length = kwargs["limit"]
         else:
-            self.length = len(self.queries) * (self.end - self.begin)
+            if self.keep_identical:
+                self.length = len(self.queries) * (self.end - self.begin)
+            else:
+                self.length = len(self.queries) * (self.end - self.begin - 1)
             self.limit = self.length
     
 
@@ -452,7 +455,7 @@ class ValidationDataset(SplitPageDataset):
         if self.queries == []:
             return super(ValidationDataset, self).get_indices_target(index)
         indexA = self.queries[index // (self.end - self.begin)]
-        if self.keep_identical:
+        if not self.keep_identical:
             indexB = self.begin + index % (self.end - self.begin - 1)
             if indexB >= indexA:
                 indexB += 1

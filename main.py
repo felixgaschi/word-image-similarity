@@ -181,7 +181,7 @@ if __name__ == "__main__":
             args.data,
             begin=args.split,
             end=None,
-             transform_false_before=data.validation_transform_before(args),
+            transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.validation_transform_before(args),
             transform_true_after=data.transform_after(args),
