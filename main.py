@@ -91,7 +91,7 @@ if __name__ == "__main__":
     parser.add_argument('--matching', type=str, default="strict",
                         help="[strict, lower, ponctuation, all]")
 
-    parser.add_argument('--split', type=int, default=3698)
+    parser.add_argument('--split', type=int, default=3697)
 
     args = parser.parse_args()
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     if args.train_type == "toy":
         train_set = data.ToyDataset(
             args.data,
-            begin=1,
+            begin=0,
             end=args.split,
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     elif args.train_type == "custom":
         train_set = data.CustomDataset(
             args.data,
-            begin=1,
+            begin=0,
             end=args.split,
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     else:
         train_set = data.SplitPageDataset(
             args.data,
-            begin=1,
+            begin=0,
             end=args.split,
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),

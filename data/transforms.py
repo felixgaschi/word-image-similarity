@@ -146,9 +146,9 @@ class SplitPageDataset(data.Dataset):
                 w = self.transform(line.strip())
                 if i >= self.begin and i < self.end:
                     if w not in indices.keys():
-                        indices[w] = [i + 1]
+                        indices[w] = [i]
                     else:
-                        indices[w].append(i + 1)
+                        indices[w].append(i)
 
         self.words = words
         self.indices = indices
@@ -159,10 +159,10 @@ class SplitPageDataset(data.Dataset):
         length = (end - begin) ** 2 if keep_identical else (end - begin) * (end - begin - 1)
         if limit is not None:
             self.limit = min(length, limit)
-            self.newEnd = int(np.ceil(np.sqrt(self.limit))) + begin
+            self.end = int(np.ceil(np.sqrt(self.limit))) + begin
         else:
             self.limit = length
-            self.newEnd = self.end
+            self.end = self.end
         
         self.true_indices = self.get_indices_true()
         assert len(self.true_indices) > 0 or self.more_true == 0, "The dataset is too small to contain any true pair. " \
@@ -171,17 +171,17 @@ class SplitPageDataset(data.Dataset):
         self.length = self.limit + self.more_true
     
     def get_file(self, id):
-        return os.path.join(self.root, "word-{:06d}.png".format(id + 1))
+        return os.path.join(self.root, "word-{:06d}.png".format(id))
 
     def get_indices_target(self, index):
         if index < self.limit:
-            indexA = self.begin + index // (self.newEnd - self.begin)
+            indexA = self.begin + index // (self.end - self.begin)
             if not self.keep_identical:
-                indexB = self.begin + index % (self.newEnd - self.begin - 1)
+                indexB = self.begin + index % (self.end - self.begin - 1)
                 if indexB >= indexA:
                     indexB += 1
             else:
-                indexB = self.begin + index % (self.newEnd - self.begin)
+                indexB = self.begin + index % (self.end - self.begin)
             w1, w2 = self.words[indexA], self.words[indexB]
             if w1 == w2:
                 target = 1
@@ -335,11 +335,11 @@ class CustomDataset(data.Dataset):
         with open(os.path.join(root, "words.txt"), "r") as f:
             for i, line in enumerate(f):
                 w = self.transform(line.strip())
-                if i + 1 >= self.begin and i + 1 < self.end:
+                if i >= self.begin and i < self.end:
                     if w not in indices.keys():
-                        indices[w] = [i + 1]
+                        indices[w] = [i]
                     else:
-                        indices[w].append(i + 1)
+                        indices[w].append(i)
 
         self.words = words
         self.indices = indices
@@ -451,10 +451,13 @@ class ValidationDataset(SplitPageDataset):
     def get_indices_target(self, index):
         if self.queries == []:
             return super(ValidationDataset, self).get_indices_target(index)
-        indexA = self.queries[index // (self.end - self.begin)] - 1
-        indexB = self.begin + index % (self.end - self.begin - 1)
-        if indexB >= indexA:
-            indexB += 1
+        indexA = self.queries[index // (self.end - self.begin)]
+        if self.keep_identical:
+            indexB = self.begin + index % (self.end - self.begin - 1)
+            if indexB >= indexA:
+                indexB += 1
+        else:
+            indexB = self.begin + index % (self.end - self.begin)
         w1, w2 = self.words[indexA], self.words[indexB]
         if w1 == w2:
             target = 1
