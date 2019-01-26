@@ -472,7 +472,21 @@ if __name__ == "__main__":
             f.write("train_acc, val_acc, val_loss, time, mAP, acc_true, acc_false, true_P, false_P\n")
 
     if args.eval_only:
-        validation(model)
+        test_score, loss, mAP, acc_true, acc_false, true_P, false_P, queries = validation(model)
+
+        if args.save_queries:
+            if args.save:
+                path = os.path.join(args.experiment, dirName, "queries_{:d}.txt".format(epoch))
+            else:
+                path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
+            with open(path, "w") as f:
+                for q in sorted(queries.keys()):
+                    line = ""
+                    line += "{}".format(q)
+                    for value in queries[q]:
+                        line += ",{}".format(value)
+                    line += "\n"
+                    f.write(line)
     else:
         for epoch in range(1, args.epochs + 1):
             t = time()
