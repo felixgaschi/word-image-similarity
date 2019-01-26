@@ -54,6 +54,10 @@ if __name__ == "__main__":
     parser.add_argument('--no-eval-only', dest="eval_only", action="store_false")
     parser.set_defaults(eval_only=False)
 
+    parser.add_argument('--eval-whole', dest="eval_whole", action="store_true")
+    parser.add_argument('--no-eval-whole', dest="eval_whole", action="store_false")
+    parser.set_defaults(eval_whole=False)
+
     parser.add_argument('--preselect-false', dest="preselect_false", action="store_true")
     parser.add_argument('--no-preselect-false', dest="preselect_false", action="store_false")
     parser.set_defaults(preselect_false=False)
@@ -164,7 +168,7 @@ if __name__ == "__main__":
     if args.eval_type == "toy":
         test_set = data.ToyDataset(
             args.data,
-            begin=args.split,
+            begin=0 if args.eval_whole else args.split,
             end=None,
             transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
@@ -179,7 +183,7 @@ if __name__ == "__main__":
     elif args.eval_type == "custom":
         test_set = data.CustomDataset(
             args.data,
-            begin=args.split,
+            begin=0 if args.eval_whole else args.split,
             end=None,
             transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
@@ -193,7 +197,7 @@ if __name__ == "__main__":
     elif args.eval_type == "validation":
         test_set = data.ValidationDataset(
             args.data,
-            begin=args.split,
+            begin=0 if args.eval_whole else args.split,
             end=None,
             transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
@@ -207,7 +211,7 @@ if __name__ == "__main__":
     else:
         test_set = data.SplitPageDataset(
             args.data,
-            begin=args.split,
+            begin=0 if args.eval_whole else args.split,
             end=None,
             transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
@@ -219,20 +223,22 @@ if __name__ == "__main__":
             matching=args.matching
         )
 
-    train_loader = torch.utils.data.DataLoader(
-        train_set,
-        batch_size=args.batch_size, shuffle=True, num_workers=args.nb_workers
-    )
+    if not args.eval_only:
+        train_loader = torch.utils.data.DataLoader(
+            train_set,
+            batch_size=args.batch_size, shuffle=True, num_workers=args.nb_workers
+        )
 
     val_loader = torch.utils.data.DataLoader(
         test_set,
         batch_size=args.batch_size, shuffle=True, num_workers=args.nb_workers
     )
 
-    nb_false, nb_true, more_true = train_set.get_info()
-    print("Info about training set:\nnb false:{:d}\nnb true:{:d}\nadditionnal transformed true:{:d}\n".format(
-        nb_false, nb_true, more_true
-    ))
+    if not args.eval_only:
+        nb_false, nb_true, more_true = train_set.get_info()
+        print("Info about training set:\nnb false:{:d}\nnb true:{:d}\nadditionnal transformed true:{:d}\n".format(
+            nb_false, nb_true, more_true
+        ))
 
     nb_false, nb_true, more_true = test_set.get_info()
     print("Info about validation set:\nnb false:{:d}\nnb true:{:d}\nadditionnal transformed true:{:d}\n".format(
