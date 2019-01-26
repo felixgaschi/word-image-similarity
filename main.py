@@ -3,7 +3,7 @@ import os, sys
 import torch
 import torch.optim as optim
 from torchvision import datasets
-from time import time
+from time import time, sleep
 from tqdm import tqdm
 import numpy as np
 
@@ -96,6 +96,8 @@ if __name__ == "__main__":
                         help="[strict, lower, ponctuation, all]")
 
     parser.add_argument('--split', type=int, default=3697)
+
+    parser.add_argument('--wait', type=int, default=0)
 
     args = parser.parse_args()
 
@@ -458,6 +460,10 @@ def validation(model):
         return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false, true_precision, false_precision, queries
 
 if __name__ == "__main__":
+    
+    print("\nWaiting the given amount of minute to start...")
+    for i in tqdm(range(args.wait * 60)):
+        sleep(1)
 
     if args.save:
         if not os.path.exists(args.experiment):
@@ -482,9 +488,9 @@ if __name__ == "__main__":
 
         if args.save_queries:
             if args.save:
-                path = os.path.join(args.experiment, dirName, "queries_{:d}.txt".format(epoch))
+                path = os.path.join(args.experiment, dirName, "queries.txt")
             else:
-                path = os.path.join(args.experiment, "queries_{:d}.txt".format(epoch))
+                path = os.path.join(args.experiment, "queries.txt")
             with open(path, "w") as f:
                 for q in sorted(queries.keys()):
                     line = ""
