@@ -12,19 +12,44 @@ from tqdm import tqdm
 import numpy as np
 
 parser = argparse.ArgumentParser(description='Word Image similarity fusion script')
-parser.add_argument('--data', type=str, default='../preprocessed', metavar='D',
+parser.add_argument('--data', type=str, default='../dataset', metavar='D',
                     help="folder where data is located.")
 parser.add_argument('--batch-size', type=int, default=32, metavar='B',
                     help='input batch size for training (default: 32)')
 parser.add_argument('--experiment', type=str, default='../results/', metavar='E',
                     help='folder where experiment outputs are located.')
 parser.add_argument('--estimator1-type', type=str, default="class")
-parser.add_argument('--model1', type=str, default="siamese")
-parser.add_argument('--model1_name', type=str, default="")
-parser.add_argument('--estimator2-type', type=str, default="class")
-parser.add_argument('--model2', type=str, default="siamese")
-parser.add_argument('--model2_name', type=str, default="")
+parser.add_argument('--model1', type=str, default="2channels")
+parser.add_argument('--model1-name', type=str, default="")
+parser.add_argument('--estimator2-type', type=str, default="regressor")
+parser.add_argument('--model2', type=str, default="2channels")
+parser.add_argument('--model2-name', type=str, default="")
 parser.add_argument('--gpu', type=int, default=0)
+parser.add_argument('--split', type=int, default=3697)
+
+parser.add_argument('--binarize', dest="binarize", action="store_true")
+parser.add_argument('--no-binarize', dest="binarize", action="store_false")
+parser.set_defaults(binarize=False)
+
+parser.add_argument('--equalize', dest="equalize", action="store_true")
+parser.add_argument('--no-equalize', dest="equalize", action="store_false")
+parser.set_defaults(equalize=False)
+
+parser.add_argument('--normalize', dest="normalize", action="store_true")
+parser.add_argument('--no-normalize', dest="normalize", action="store_false")
+parser.set_defaults(normalize=True)
+
+parser.add_argument('--nb-eval', type=int, default=None)
+
+parser.add_argument('--keep-identical', dest="keep_identical", action="store_true")
+parser.add_argument('--no-keep-identical', dest="keep_identical", action="store_false")
+parser.set_defaults(keep_identical=False)
+
+parser.add_argument('--matching', type=str, default="strict",
+                        help="[strict, lower, ponctuation, all]")
+
+parser.add_argument('--nb-workers', type=int, default=1)
+
 
 args = parser.parse_args()
 
@@ -66,16 +91,18 @@ elif args.estimator2_type == "regressor":
 import data
 
 
-loader_controller = data.ManuallyBalancedController(
-    args.data, 
-    transform_eval_before=data.validation_transform_before,
-    transform_eval_after=data.validation_transform_after,
-    transform_before=data.train_transform_before,
-    transform_after=data.train_transform_after,
-    transform_true_before=None,
-    nb_words_train=args.nb_train,
-    nb_words_val=args.nb_eval,
-    verbose=1
+loader_controller = data.ValidationDataset(
+    args.data,
+    begin=args.split,
+    end=None,
+    transform_false_before=data.validation_transform_before(args),
+    transform_false_after=data.transform_after(args),
+    transform_true_before=data.validation_transform_before(args),
+    transform_true_after=data.transform_after(args),
+    more_true=0,
+    limit=args.nb_eval,
+    keep_identical=args.keep_identical,
+    matching=args.matching
 )
 
 train_loader = torch.utils.data.DataLoader(
@@ -95,12 +122,12 @@ if use_cuda:
 else:
     print('Using CPU')
     
-dirName1 = "/exp-{:05d}".format(args.load) + args.model1_name
-model1.load_state_dict(torch.load(args.experiment + dirName1 + '.pth'))
+dirName1 = args.model1_name
+model1.load_state_dict(torch.load(dirName1))
 model1.eval()
 
-dirName2 = "/exp-{:05d}".format(args.load) + args.model2_name
-model2.load_state_dict(torch.load(args.experiment + dirName2 + '.pth'))
+dirName2 = args.model2_name
+model2.load_state_dict(torch.load(dirName2))
 model2.eval()
 
 def fusion():
