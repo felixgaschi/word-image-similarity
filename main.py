@@ -3,6 +3,7 @@ import os, sys
 import torch
 import torch.optim as optim
 from torchvision import datasets
+from torchvision.models import resnet50
 from time import time, sleep
 from tqdm import tqdm
 import numpy as np
@@ -103,7 +104,7 @@ if __name__ == "__main__":
 
     use_cuda = torch.cuda.is_available()
 
-    from models import TwoChannelsClassifier, TwoChannelsRegressor, SiameseRegressor, SiameseClassifier, PseudoSiameseClassifier, PseudoSiameseRegressor
+    from models import *
 
     if args.estimator_type == "class":
         if args.model == "2channels":
@@ -112,6 +113,8 @@ if __name__ == "__main__":
             model = SiameseClassifier()
         elif args.model == "pseudosiamese":
             model = PseudoSiameseClassifier()
+        elif args.model == "resnet50":
+            model = Resnet50Classifier()
     elif args.estimator_type == "regressor":
         if args.model == "2channels":
             model = TwoChannelsRegressor()

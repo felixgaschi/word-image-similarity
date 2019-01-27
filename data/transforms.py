@@ -54,9 +54,14 @@ def train_transform_false_before(args):
         trans.append(
             transforms.Lambda(lambda x: jitter(x))
         )
-    trans += [
-        transforms.Resize((40, 100))
-    ]
+    if args.model == "resnet50":
+        trans += [
+            transforms.Resize((224, 224))
+        ]
+    else:
+        trans += [
+            transforms.Resize((40, 100))
+        ]
     return transforms.Compose(trans)
 
 def transform_after(args):
@@ -86,15 +91,23 @@ def train_transform_true_before(args):
         trans.append(
             transforms.Lambda(lambda x: jitter(x))
         )
-    trans += [
-        transforms.Resize((40, 100)),
-    ]
+    if args.model == "resnet50":
+        trans += [
+            transforms.Resize((224, 224))
+        ]
+    else:
+        trans += [
+            transforms.Resize((40, 100))
+        ]
     return transforms.Compose(trans)
 
 
 def validation_transform_before(args):
-    return transforms.Resize((40, 100))
-
+    if args.model == "resnet50":
+        return transforms.Resize((224, 224))
+    else:
+        return transforms.Resize((40, 100))
+        
 def noise(img, std=5):
     return img + torch.randn(img.size())*std
 
