@@ -120,7 +120,7 @@ if __name__ == "__main__":
         elif args.model == "pseudosiamese":
             model = PseudoSiameseClassifier()
         elif args.model == "resnet50":
-            model = Resnet50Classifier()
+            model = FromFeatureClassifier(2048)
     elif args.estimator_type == "regressor":
         if args.model == "2channels":
             model = TwoChannelsRegressor()
@@ -128,10 +128,28 @@ if __name__ == "__main__":
             model = SiameseRegressor()
         elif args.model == "pseudosiamese":
             model = PseudoSiameseRegressor()
+        elif args.model == "resnet50":
+            model = FromFeatureRegressor(2048)
 
     import data
 
-    if args.train_type == "toy":
+    if args.model == "resnet50":
+        train_set = data.FeatureCustomDataset(
+            args.data,
+            begin=0,
+            end=args.split,
+            transform_false_before=data.train_transform_false_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.train_transform_true_before(args),
+            transform_true_after=data.transform_after(args),
+            more_true=args.nb_more,
+            limit=args.nb_train,
+            preselect_false=args.preselect_false,
+            keep_identical=args.keep_identical,
+            remove_hard=args.remove_hard,
+            matching=args.matching
+        )
+    elif args.train_type == "toy":
         train_set = data.ToyDataset(
             args.data,
             begin=0,
@@ -176,7 +194,21 @@ if __name__ == "__main__":
             matching=args.matching
         )
 
-    if args.eval_type == "toy":
+    if args.model == "resnet50":
+        test_set = data.FeatureValidationDataset(
+            args.data,
+            begin=0 if args.eval_whole else args.split,
+            end=None,
+            transform_false_before=data.validation_transform_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.validation_transform_before(args),
+            transform_true_after=data.transform_after(args),
+            more_true=0,
+            limit=args.nb_eval,
+            keep_identical=args.keep_identical,
+            matching=args.matching
+        )
+    elif args.eval_type == "toy":
         test_set = data.ToyDataset(
             args.data,
             begin=0 if args.eval_whole else args.split,

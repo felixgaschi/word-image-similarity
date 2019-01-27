@@ -217,34 +217,33 @@ class PseudoSiameseClassifier(nn.Module):
         return x
 
 
-class Resnet50Classifier(nn.Module):
+class FromFeatureClassifier(nn.Module):
 
-    def __init__(self):
-        super(Resnet50Classifier, self).__init__()
-        model = resnet50(pretrained=True)
-        modules = list(model.children())[:-1]
-        num_ftrs = model.fc.in_features
-        model = nn.Sequential(*modules)
-        for p in model.parameters():
-            p.requires_grad = False
-        self.model = model
+    def __init__(self, nb_features):
+        super(FromFeatureClassifier, self).__init__()
 
-        self.fc1 = nn.Linear(4096, 256)
+        self.fc1 = nn.Linear(2 * nb_features, 256)
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 2)
-
+    
     def forward(self, x):
-        x1, x2 = x[:,:1], x[:,1:]
-        x1 = torch.cat((x1, x1, x1), 1)
-        x2 = torch.cat((x2, x2, x2), 1)
-        
-        x1 = self.model(x1)
-        x2 = self.model(x2)
-
-        x = torch.cat((x1, x2), 1)
-        x = x.view(-1, 4096)
-
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = F.softmax(self.fc3(x), dim=1)
+        return x
+
+
+class FromFeatureRegressor(nn.Module):
+
+    def __init__(self, nb_features):
+        super(FromFeatureRegressor, self).__init__()
+
+        self.fc1 = nn.Linear(2 * nb_features, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 1)
+    
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = torch.sigmoid(self.fc3(x))
         return x

@@ -442,7 +442,35 @@ class CustomDataset(data.Dataset):
     def get_info(self):
         return len(self.true_pairs_id) + self.more_true, len(self.true_pairs_id), self.more_true
 
-    
+class FeatureCustomDataset(CustomDataset):
+
+    def __getitem__(self, index):
+        if index % 2 == 0:
+            indexA, indexB = self.true_pairs_id[(index // 2) % len(self.true_pairs_id)]
+            target = 1
+        else:
+            if self.preselect_false:
+                indexA, indexB = self.false_pairs_id[index // 2]
+            else:
+                indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
+                while self.words[indexA] == self.words[indexB] or \
+                        (self.remove_hard and normalize_string(self.words[indexA]) == normalize_string(self.words[indexB])):
+                    indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
+            target = 0
+        w1, w2 = self.words[indexA], self.words[indexB]
+        idA, idB = self.word2id[w1], self.word2id[w2]
+
+        fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
+        x1, x2 = np.loadtxt(fname_i), np.loadtxt(fname_j)
+        word_indices = torch.tensor([idA, idB], dtype=torch.int)
+        img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
+
+        x1, x2 = torch.from_numpy(x1), torch.from_numpy(x2)
+        sample = torch.cat((sample1, sample2), 0)
+
+        return (sample, target, indices, img_indices)
+
+
 class ValidationDataset(SplitPageDataset):
 
     def __init__(self, *args, **kwargs):
@@ -481,3 +509,19 @@ class ValidationDataset(SplitPageDataset):
             target = 0
         idA, idB = self.word2id[w1], self.word2id[w2]
         return indexA, indexB, target, idA, idB
+
+
+class FeatureValidationDataset(ValidationDataset):
+
+    def __getitem__(self, index):
+        indexA, indexB, target, idA, idB = self.get_indices_target(index)
+        
+        fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
+        x1, x2 = np.loadtxt(fname_i), np.loadtxt(fname_j)
+        indices = torch.tensor([idA, idB], dtype=torch.int)
+        img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
+
+        x1, x2 = torch.from_numpy(x1), torch.from_numpy(x2)
+        sample = torch.cat((sample1, sample2), 0)
+
+        return (sample, target, indices, img_indices)
