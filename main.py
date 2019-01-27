@@ -91,6 +91,10 @@ if __name__ == "__main__":
     parser.add_argument('--no-remove_hard', dest="remove_hard", action="store_false")
     parser.set_defaults(remove_hard=False)
 
+    parser.add_argument('--use-gpu', dest="use_gpu", action="store_true")
+    parser.add_argument('--no-use-gpu', dest='use_gpu', action="store_false")
+    parser.set_defaults(use_gpu=True)
+
     parser.add_argument('--shearing', type=float, default=0.0)
 
     parser.add_argument('--matching', type=str, default="strict",
@@ -103,6 +107,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     use_cuda = torch.cuda.is_available()
+    if not args.use_gpu:
+        use_cuda = False
 
     from models import *
 
