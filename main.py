@@ -13,6 +13,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Word Image similarity training script')
     parser.add_argument('--data', type=str, default='../dataset', metavar='D',
                         help="folder where data is located.")
+    parser.add_argument('--persistence-root', type=str, default="../persistence")
     parser.add_argument('--batch-size', type=int, default=32, metavar='B',
                         help='input batch size for training (default: 32)')
     parser.add_argument('--epochs', type=int, default=10, metavar='N',
@@ -95,6 +96,10 @@ if __name__ == "__main__":
     parser.add_argument('--no-use-gpu', dest='use_gpu', action="store_false")
     parser.set_defaults(use_gpu=True)
 
+    parser.add_argument('--persistence', dest="persistence", action="store_true")
+    parser.add_argument('--no-persistence', dest='persistence', action="store_false")
+    parser.set_defaults(use_gpu=False)
+
     parser.add_argument('--shearing', type=float, default=0.0)
 
     parser.add_argument('--matching', type=str, default="strict",
@@ -112,66 +117,73 @@ if __name__ == "__main__":
 
     from models import *
 
+    nb_channels = 3 if args.persistence else 1
+
     if args.estimator_type == "class":
         if args.model == "2channels":
-            model = TwoChannelsClassifier()
+            model = TwoChannelsClassifier(nb_channels=nb_channels)
         elif args.model == "siamese":
-            model = SiameseClassifier()
+            model = SiameseClassifier(nb_channels=nb_channels)
         elif args.model == "pseudosiamese":
-            model = PseudoSiameseClassifier()
+            model = PseudoSiameseClassifier(nb_channels=nb_channels)
         elif args.model == "resnet50":
             model = FromFeatureClassifier(2048)
     elif args.estimator_type == "regressor":
         if args.model == "2channels":
-            model = TwoChannelsRegressor()
+            model = TwoChannelsRegressor(nb_channels=nb_channels)
         elif args.model == "siamese":
-            model = SiameseRegressor()
+            model = SiameseRegressor(nb_channels=nb_channels)
         elif args.model == "pseudosiamese":
-            model = PseudoSiameseRegressor()
+            model = PseudoSiameseRegressor(nb_channels=nb_channels)
         elif args.model == "resnet50":
             model = FromFeatureRegressor(2048)
 
     import data
 
     if args.model == "resnet50":
-        train_set = data.FeatureCustomDataset(
+        loader = data.FeatureLoader(
+            args.data
+        )
+        eval_loader = loader
+    elif args.persistence:
+        loader = data.PersistenceLoader(
             args.data,
-            begin=0,
-            end=args.split,
+            args.persistence_root,
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.train_transform_true_before(args),
             transform_true_after=data.transform_after(args),
-            more_true=args.nb_more,
-            limit=args.nb_train,
-            preselect_false=args.preselect_false,
-            keep_identical=args.keep_identical,
-            remove_hard=args.remove_hard,
-            matching=args.matching
         )
-    elif args.train_type == "toy":
-        train_set = data.ToyDataset(
+        eval_loader = data.PersistenceLoader(
             args.data,
-            begin=0,
-            end=args.split,
+            args.persistence_root,
+            transform_false_before=data.validation_transform_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.validation_transform_before(args),
+            transform_true_after=data.transform_after(args),
+        )
+    else:
+        loader = data.ImagePairLoader(
+            args.data,
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.train_transform_true_before(args),
             transform_true_after=data.transform_after(args),
-            more_true=args.nb_more,
-            limit=args.nb_train,
-            keep_identical=args.keep_identical,
-            matching=args.matching
         )
-    elif args.train_type == "custom":
+        eval_loader = data.ImagePairLoader(
+            args.data,
+            transform_false_before=data.validation_transform_before(args),
+            transform_false_after=data.transform_after(args),
+            transform_true_before=data.validation_transform_before(args),
+            transform_true_after=data.transform_after(args),
+        )
+    
+    if args.train_type == "custom":
         train_set = data.CustomDataset(
             args.data,
             begin=0,
             end=args.split,
-            transform_false_before=data.train_transform_false_before(args),
-            transform_false_after=data.transform_after(args),
-            transform_true_before=data.train_transform_true_before(args),
-            transform_true_after=data.transform_after(args),
+            loader=loader,
             more_true=args.nb_more,
             limit=args.nb_train,
             preselect_false=args.preselect_false,
@@ -184,54 +196,20 @@ if __name__ == "__main__":
             args.data,
             begin=0,
             end=args.split,
-            transform_false_before=data.train_transform_false_before(args),
-            transform_false_after=data.transform_after(args),
-            transform_true_before=data.train_transform_true_before(args),
-            transform_true_after=data.transform_after(args),
+            loader=loader,
             more_true=args.nb_more,
             limit=args.nb_train,
             keep_identical=args.keep_identical,
             matching=args.matching
         )
 
-    if args.model == "resnet50":
-        test_set = data.FeatureValidationDataset(
-            args.data,
-            begin=0 if args.eval_whole else args.split,
-            end=None,
-            transform_false_before=data.validation_transform_before(args),
-            transform_false_after=data.transform_after(args),
-            transform_true_before=data.validation_transform_before(args),
-            transform_true_after=data.transform_after(args),
-            more_true=0,
-            limit=args.nb_eval,
-            keep_identical=args.keep_identical,
-            matching=args.matching
-        )
-    elif args.eval_type == "toy":
-        test_set = data.ToyDataset(
-            args.data,
-            begin=0 if args.eval_whole else args.split,
-            end=None,
-            transform_false_before=data.validation_transform_before(args),
-            transform_false_after=data.transform_after(args),
-            transform_true_before=data.validation_transform_before(args),
-            transform_true_after=data.transform_after(args),
-            more_true=0,
-            limit=args.nb_eval,
-            preselect_false = args.preselect_false,
-            keep_identical=args.keep_identical,
-            matching=args.matching
-        )
-    elif args.eval_type == "custom":
+    
+    if args.eval_type == "custom":
         test_set = data.CustomDataset(
             args.data,
             begin=0 if args.eval_whole else args.split,
             end=None,
-            transform_false_before=data.validation_transform_before(args),
-            transform_false_after=data.transform_after(args),
-            transform_true_before=data.validation_transform_before(args),
-            transform_true_after=data.transform_after(args),
+            loader=eval_loader,
             more_true=0,
             limit=args.nb_eval,
             keep_identical=args.keep_identical,
@@ -242,10 +220,7 @@ if __name__ == "__main__":
             args.data,
             begin=0 if args.eval_whole else args.split,
             end=None,
-            transform_false_before=data.validation_transform_before(args),
-            transform_false_after=data.transform_after(args),
-            transform_true_before=data.validation_transform_before(args),
-            transform_true_after=data.transform_after(args),
+            loader=eval_loader,
             more_true=0,
             limit=args.nb_eval,
             keep_identical=args.keep_identical,
@@ -256,10 +231,7 @@ if __name__ == "__main__":
             args.data,
             begin=0 if args.eval_whole else args.split,
             end=None,
-            transform_false_before=data.validation_transform_before(args),
-            transform_false_after=data.transform_after(args),
-            transform_true_before=data.validation_transform_before(args),
-            transform_true_after=data.transform_after(args),
+            loader=eval_loader,
             more_true=0,
             limit=args.nb_eval,
             keep_identical=args.keep_identical,

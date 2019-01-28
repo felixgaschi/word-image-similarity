@@ -12,6 +12,10 @@ BINARY_MEAN = 0.91
 BINARY_STD = 0.24
 MEAN = 0.77
 STD = 0.17
+H0_MEAN = 0.0012
+H0_STD = 0.31
+H1_MEAN = 0.0023
+H1_STD = 0.58
 
 def normalize_string(word):
     return re.sub("[^\w\s]", "", word).lower()
@@ -120,11 +124,7 @@ def grey_pil_loader(path):
 class SplitPageDataset(data.Dataset):
 
     def __init__(self, root, begin=1, end=3697,
-                transform_false_before=None, 
-                transform_false_after=None,
-                transform_true_before=None,
-                transform_true_after=None,
-                loader=grey_pil_loader,
+                loader=None,
                 more_true=0,
                 limit=None,
                 keep_identical=False,
@@ -133,10 +133,6 @@ class SplitPageDataset(data.Dataset):
         self.root = root
         self.begin = begin
         self.end = end
-        self.transform_false_before = transform_false_before
-        self.transform_false_after = transform_false_after
-        self.transform_true_before = transform_true_before
-        self.transform_true_after = transform_true_after
         self.loader = loader
         self.more_true = more_true
         self.keep_identical = keep_identical
@@ -210,28 +206,10 @@ class SplitPageDataset(data.Dataset):
     def __getitem__(self, index):
         indexA, indexB, target, idA, idB = self.get_indices_target(index)
         
-        fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
-        sample1, sample2 = self.loader(fname_i), self.loader(fname_j)
         indices = torch.tensor([idA, idB], dtype=torch.int)
         img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
-        if self.transform_false_before is not None and target == 0:
-            sample1 = self.transform_false_before(sample1)
-            sample2 = self.transform_false_before(sample2)
-
-        if self.transform_true_before is not None and target == 1:
-            sample1 = self.transform_true_before(sample1)
-            sample2 = self.transform_true_before(sample2)
-
-        sample1 = transforms.ToTensor()(sample1)
-        sample2 = transforms.ToTensor()(sample2)
-        sample = torch.cat((sample1, sample2), 0)
-
-        if self.transform_false_after is not None and target == 0:
-            sample = self.transform_false_after(sample)
-
-        if self.transform_true_after is not None and target == 1:
-            sample = self.transform_true_after(sample)
+        sample = self.loader.get_sample(indexA, indexB, target)
 
         return (sample, target, indices, img_indices)
     
@@ -258,59 +236,10 @@ class SplitPageDataset(data.Dataset):
         return res
 
 
-class ToyDataset(SplitPageDataset):
-
-    def __init__(self, *args, **kwargs):
-        super(ToyDataset, self).__init__(*args, **kwargs)
-
-        nb_false = self.limit // 2
-        nb_true = self.limit - nb_false
-
-        false_samples = []
-        true_samples = []
-
-        for i in range(self.begin, self.end):
-            for j in range(self.begin, self.end):
-                if i == j:
-                    continue
-                if self.words[i] == self.words[j] and len(true_samples) < nb_true:
-                    true_samples.append((i, j))
-                elif self.words[i] != self.words[j] and len(false_samples) < nb_false:
-                    false_samples.append((i, j))
-                if len(false_samples) == nb_false and len(true_samples) == nb_true:
-                    break
-            if len(false_samples) == nb_false and len(true_samples) == nb_true:
-                break
-        
-        self.false_samples = false_samples
-        self.true_samples = true_samples
-
-    
-    def get_indices_target(self, index):
-        if not hasattr(self, "false_samples"):
-            return super(ToyDataset, self).get_indices_target(index)
-        if index < len(self.false_samples):
-            indexA, indexB = self.false_samples[index]
-            target = 0
-        else:
-            index -= len(self.false_samples)
-            indexA, indexB = self.true_samples[index]
-            target = 1
-        w1, w2 = self.words[indexA], self.words[indexB]
-        idA, idB = self.word2id[w1], self.word2id[w2]
-        return indexA, indexB, target, idA, idB
-    
-    def __len__(self):
-        return len(self.false_samples) + len(self.true_samples) 
-
 class CustomDataset(data.Dataset):
 
     def __init__(self, root, begin=1, end=3697,
-                transform_false_before=None, 
-                transform_false_after=None,
-                transform_true_before=None,
-                transform_true_after=None,
-                loader=grey_pil_loader,
+                loader=None,
                 more_true=0,
                 limit=None,
                 keep_identical=False,
@@ -321,10 +250,6 @@ class CustomDataset(data.Dataset):
         self.root = root
         self.begin = begin
         self.end = end
-        self.transform_false_before = transform_false_before
-        self.transform_false_after = transform_false_after
-        self.transform_true_before = transform_true_before
-        self.transform_true_after = transform_true_after
         self.loader = loader
         self.more_true = more_true
         self.keep_identical = keep_identical
@@ -411,28 +336,10 @@ class CustomDataset(data.Dataset):
         w1, w2 = self.words[indexA], self.words[indexB]
         idA, idB = self.word2id[w1], self.word2id[w2]
 
-        fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
-        sample1, sample2 = self.loader(fname_i), self.loader(fname_j)
         word_indices = torch.tensor([idA, idB], dtype=torch.int)
         img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
-        if self.transform_false_before is not None and target == 0:
-            sample1 = self.transform_false_before(sample1)
-            sample2 = self.transform_false_before(sample2)
-
-        if self.transform_true_before is not None and target == 1:
-            sample1 = self.transform_true_before(sample1)
-            sample2 = self.transform_true_before(sample2)
-
-        sample1 = transforms.ToTensor()(sample1)
-        sample2 = transforms.ToTensor()(sample2)
-        sample = torch.cat((sample1, sample2), 0)
-
-        if self.transform_false_after is not None and target == 0:
-            sample = self.transform_false_after(sample)
-
-        if self.transform_true_after is not None and target == 1:
-            sample = self.transform_true_after(sample)
+        sample = self.loader.get_sample(indexA, indexB, target)
 
         return (sample, target, word_indices, img_indices)
 
@@ -441,35 +348,6 @@ class CustomDataset(data.Dataset):
 
     def get_info(self):
         return len(self.true_pairs_id) + self.more_true, len(self.true_pairs_id), self.more_true
-
-class FeatureCustomDataset(CustomDataset):
-
-    def __getitem__(self, index):
-        if index % 2 == 0:
-            indexA, indexB = self.true_pairs_id[(index // 2) % len(self.true_pairs_id)]
-            target = 1
-        else:
-            if self.preselect_false:
-                indexA, indexB = self.false_pairs_id[index // 2]
-            else:
-                indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
-                while self.words[indexA] == self.words[indexB] or \
-                        (self.remove_hard and normalize_string(self.words[indexA]) == normalize_string(self.words[indexB])):
-                    indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
-            target = 0
-        w1, w2 = self.words[indexA], self.words[indexB]
-        idA, idB = self.word2id[w1], self.word2id[w2]
-
-        fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
-        x1, x2 = np.loadtxt(fname_i), np.loadtxt(fname_j)
-        word_indices = torch.tensor([idA, idB], dtype=torch.int)
-        img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
-
-        x1, x2 = torch.from_numpy(x1), torch.from_numpy(x2)
-        sample = torch.cat((x1, x2), 0)
-        sample = sample.float()
-
-        return (sample, target, word_indices, img_indices)
 
 
 class ValidationDataset(SplitPageDataset):
@@ -512,18 +390,114 @@ class ValidationDataset(SplitPageDataset):
         return indexA, indexB, target, idA, idB
 
 
-class FeatureValidationDataset(ValidationDataset):
+class Loader:
 
-    def __getitem__(self, index):
-        indexA, indexB, target, idA, idB = self.get_indices_target(index)
+    def __init__(self, root, loader=grey_pil_loader):
+        self.root = root
+        self.loader = grey_pil_loader
+
+    def get_file(self, id):
+        return os.path.join(self.root, "word-{:06d}.png".format(id))
+    
+    def get_sample(self, indexA, indexB, target):
+        raise NotImplementedError("Loader is an abstract class")
+
+
+class ImagePairLoader(Loader):
+
+    def __init__(self, root, loader=grey_pil_loader, transform_false_before=None, transform_true_before=None, \
+    transform_false_after=None, transform_true_after=None):
+        super(ImagePairLoader, self).__init__(root, loader=loader)
+
+        self.transform_false_before = transform_false_before
+        self.transform_true_before = transform_true_before
+        self.transform_false_after = transform_false_after
+        self.transform_true_after = transform_true_after
+
+    def get_sample(self, indexA, indexB, target):
+        fname_1, fname_2 = self.get_file(indexA), self.get_file(indexB)
+        
+        sample1, sample2 = self.loader(fname_1), self.loader(fname_2)
+
+        if self.transform_false_before is not None and target == 0:
+            sample1 = self.transform_false_before(sample1)
+            sample2 = self.transform_false_before(sample2)
+
+        if self.transform_true_before is not None and target == 1:
+            sample1 = self.transform_true_before(sample1)
+            sample2 = self.transform_true_before(sample2)
+
+        sample1 = transforms.ToTensor()(sample1)
+        sample2 = transforms.ToTensor()(sample2)
+        sample = torch.cat((sample1, sample2), 0)
+
+        if self.transform_false_after is not None and target == 0:
+            sample = self.transform_false_after(sample)
+
+        if self.transform_true_after is not None and target == 1:
+            sample = self.transform_true_after(sample)
+        
+        return sample
+
+
+class FeatureLoader(Loader):
+
+    def get_sample(self, indexA, indexB, target):
         
         fname_i, fname_j = self.get_file(indexA), self.get_file(indexB)
         x1, x2 = np.loadtxt(fname_i), np.loadtxt(fname_j)
-        indices = torch.tensor([idA, idB], dtype=torch.int)
-        img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
         x1, x2 = torch.from_numpy(x1), torch.from_numpy(x2)
         sample = torch.cat((x1, x2), 0)
         sample = sample.float()
 
-        return (sample, target, indices, img_indices)
+        return sample
+
+
+class PersistenceLoader(Loader):
+
+    def __init__(self, root, persistence_root, loader=grey_pil_loader, transform_false_before=None, transform_true_before=None, \
+    transform_false_after=None, transform_true_after=None):
+        super(PersistenceLoader, self).__init__(root, loader=grey_pil_loader)
+
+        self.image_loader = ImagePairLoader(
+            root, 
+            loader=grey_pil_loader, 
+            transform_false_before=transform_false_before,
+            transform_true_before=transform_true_before,
+            transform_false_after=transform_false_after,
+            transform_true_after=transform_true_after
+        )
+
+        self.persistence_root = persistence_root
+        
+
+    def get_file(self, id):
+        return os.path.join(self.root, "word-{:06d}.png".format(id)), \
+            os.path.join(self.persistence_root, "word-{:06d}_0.png".format(id)), \
+            os.path.join(self.persistence_root, "word-{:06d}_1.png".format(id))
+    
+    def get_sample(self, indexA, indexB, target):
+        fnameA, fnameA_0, fnameA_1 = self.get_file(indexA)
+        fnameB, fnameB_0, fnameB_1 = self.get_file(indexB)
+
+        sample = self.image_loader.get_sample(indexA, indexB, target)
+
+        hA_0, hA_1 = self.loader(fnameA_0), self.loader(fnameA_1)
+        hB_0, hB_1 = self.loader(fnameB_0), self.loader(fnameB_1)
+
+        liste = [hA_0, hA_1, hB_0, hB_1]
+
+        for i in range(len(liste)):
+            tmp = liste[i]
+            tmp = transforms.Resize((40, 100))(tmp)
+            tmp = transforms.ToTensor()(tmp)
+            if i % 2 == 0:
+                tmp = transforms.Normalize(mean=[H0_MEAN], std=[H0_STD])(tmp)
+            else:
+                tmp = transforms.Normalize(mean=[H1_MEAN], std=[H1_STD])(tmp)
+            liste[i] = tmp
+        
+        sample = torch.cat((sample[:1,], liste[0], liste[1], sample[1:,], liste[2], liste[3]), 0)
+
+        return sample
