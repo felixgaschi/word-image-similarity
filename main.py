@@ -38,7 +38,7 @@ if __name__ == "__main__":
     parser.set_defaults(save_queries=False)
 
     parser.add_argument('--nb-workers', type=int, default=1)
-    parser.add_argument('--estimator-type', type=str, default="class")
+    parser.add_argument('--estimator-type', type=str, default="regressor")
     parser.add_argument('--model', type=str, default="2channels")
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--optimizer', type=str, default="SGD")
@@ -100,6 +100,10 @@ if __name__ == "__main__":
     parser.add_argument('--no-persistence', dest='persistence', action="store_false")
     parser.set_defaults(use_gpu=False)
 
+    parser.add_argument('--float-score', dest="float_score", action="store_true")
+    parser.add_argument('--no-float-score', dest="float_score", action="store_false")
+    parser.set_defaults(float_score=False)
+
     parser.add_argument('--shearing', type=float, default=0.0)
 
     parser.add_argument('--matching', type=str, default="strict",
@@ -152,7 +156,7 @@ if __name__ == "__main__":
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.train_transform_true_before(args),
-            transform_true_after=data.transform_after(args),
+            transform_true_after=data.transform_after(args)
         )
         eval_loader = data.PersistenceLoader(
             args.data,
@@ -160,7 +164,7 @@ if __name__ == "__main__":
             transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.validation_transform_before(args),
-            transform_true_after=data.transform_after(args),
+            transform_true_after=data.transform_after(args)
         )
     else:
         loader = data.ImagePairLoader(
@@ -168,14 +172,14 @@ if __name__ == "__main__":
             transform_false_before=data.train_transform_false_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.train_transform_true_before(args),
-            transform_true_after=data.transform_after(args),
+            transform_true_after=data.transform_after(args)
         )
         eval_loader = data.ImagePairLoader(
             args.data,
             transform_false_before=data.validation_transform_before(args),
             transform_false_after=data.transform_after(args),
             transform_true_before=data.validation_transform_before(args),
-            transform_true_after=data.transform_after(args),
+            transform_true_after=data.transform_after(args)
         )
     
     if args.train_type == "custom":
@@ -189,7 +193,8 @@ if __name__ == "__main__":
             preselect_false=args.preselect_false,
             keep_identical=args.keep_identical,
             remove_hard=args.remove_hard,
-            matching=args.matching
+            matching=args.matching,
+            score="" if args.float_score else "equal"
         )
     else:
         train_set = data.SplitPageDataset(
@@ -200,7 +205,8 @@ if __name__ == "__main__":
             more_true=args.nb_more,
             limit=args.nb_train,
             keep_identical=args.keep_identical,
-            matching=args.matching
+            matching=args.matching,
+            score="" if args.float_score else "equal"
         )
 
     
@@ -213,7 +219,8 @@ if __name__ == "__main__":
             more_true=0,
             limit=args.nb_eval,
             keep_identical=args.keep_identical,
-            matching=args.matching
+            matching=args.matching,
+            score="" if args.float_score else "equal"
         )
     elif args.eval_type == "validation":
         test_set = data.ValidationDataset(
@@ -224,7 +231,8 @@ if __name__ == "__main__":
             more_true=0,
             limit=args.nb_eval,
             keep_identical=args.keep_identical,
-            matching=args.matching
+            matching=args.matching,
+            score="" if args.float_score else "equal"
         )
     else:
         test_set = data.SplitPageDataset(
@@ -235,7 +243,8 @@ if __name__ == "__main__":
             more_true=0,
             limit=args.nb_eval,
             keep_identical=args.keep_identical,
-            matching=args.matching
+            matching=args.matching,
+            score="" if args.float_score else "equal"
         )
 
     if not args.eval_only:
@@ -316,7 +325,13 @@ if __name__ == "__main__":
             else:
                 score = output.data
                 pred = output.data.round()
-            correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+            
+            if args.float_score:
+                round_target = target.data.round()
+            else:
+                round_target = target.data
+
+            correct += pred.eq(round_target.view_as(pred)).cpu().sum()
             for j in range(indices.size(0)):
                 query = int(img_indices[j, 0])
                 if query not in queries:
@@ -327,7 +342,7 @@ if __name__ == "__main__":
                     target[j].cpu().item()
                 ))
 
-                if target[j].cpu().item() == 1:
+                if target[j].cpu().item() >= 0.5:
                     nb_true += 1
                     if pred[j].cpu().item() == 0:
                         nb_false_false += 1
@@ -352,9 +367,9 @@ if __name__ == "__main__":
             for s in sorted_scores:
                 if s[1] >= 0.5:
                     p_div += 1
-                    if s[2] == 1:
+                    if s[2] >= 0.5:
                         p_nom += 1
-                if s[2] == 1:
+                if s[2] >= 0.5:
                     cum_sum += p_nom * 1. / max(1, p_div)
                     nb_rel += 1
             score = cum_sum * 1. / max(1, nb_rel)
@@ -407,7 +422,12 @@ def validation(model):
             else:
                 score = output.data
                 pred = output.data.round()
-            correct += pred.eq(target.data.view_as(pred)).cpu().sum()
+
+            if args.float_score:
+                round_target = target.data.round()
+            else:
+                round_target = target.data
+            correct += pred.eq(round_target.data.view_as(pred)).cpu().sum()
             for j in range(indices.size(0)):
                 query = int(img_indices[j, 0])
                 if query not in queries:
@@ -418,7 +438,7 @@ def validation(model):
                     target[j].cpu().item()
                 ))
 
-                if target[j].cpu().item() == 1:
+                if target[j].cpu().item() >= 0.5:
                     nb_true += 1
                     if pred[j].cpu().item() == 0:
                         nb_false_false += 1
@@ -443,9 +463,9 @@ def validation(model):
             for s in sorted_scores:
                 if s[1] >= 0.5:
                     p_div += 1
-                    if s[2] == 1:
+                    if s[2] >= 0.5:
                         p_nom += 1
-                if s[2] == 1:
+                if s[2] >= 0.5:
                     cum_sum += p_nom * 1. / max(1, p_div)
                     nb_rel += 1
             score = cum_sum * 1. / max(1, nb_rel)
@@ -464,13 +484,13 @@ def validation(model):
             100. * mAP
         ))
 
-        print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / nb_true))
-        print('True negative / negative: {:.4f}'.format(nb_true_false * 1. / nb_false))
+        print('True positive / positive: {:.4f}'.format(nb_true_true * 1. / max(1, nb_true)))
+        print('True negative / negative: {:.4f}'.format(nb_true_false * 1. / max(1, nb_false)))
 
         print('Positive precision: {:.4f}'.format(true_precision))
         print('Negative precision: {:.4f}'.format(false_precision))
         
-        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / nb_true, nb_true_false * 1. / nb_false, true_precision, false_precision, queries
+        return 100. * correct / len(val_loader.dataset), validation_loss, mAP, nb_true_true * 1. / max(1, nb_true), nb_true_false * 1. / max(1, nb_false), true_precision, false_precision, queries
 
 if __name__ == "__main__":
     

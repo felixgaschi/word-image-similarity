@@ -20,6 +20,29 @@ H1_STD = 0.58
 def normalize_string(word):
     return re.sub("[^\w\s]", "", word).lower()
 
+
+def longestSubstringFinder(string1, string2):
+    if string1 == string2:
+        return string1
+    answer = ""
+    len1, len2 = len(string1), len(string2)
+    for i in range(len1):
+        match = ""
+        for j in range(len2):
+            if (i + j < len1 and string1[i + j] == string2[j]):
+                match += string2[j]
+            else:
+                if (len(match) > len(answer)): answer = match
+                match = ""
+    return answer
+
+def get_score(w1, w2, type="equal"):
+    if type == "equal":
+        return 1 if w1 == w2 else 0
+    else:
+        return len(longestSubstringFinder(w1, w2)) * 1. / max(1, len(w1), len(w2))
+
+
 string_transform = {
     "strict": lambda w: w,
     "lower": lambda w: w.lower(),
@@ -128,7 +151,8 @@ class SplitPageDataset(data.Dataset):
                 more_true=0,
                 limit=None,
                 keep_identical=False,
-                matching="strict"
+                matching="strict",
+                score="equal",
                 ):
         self.root = root
         self.begin = begin
@@ -137,6 +161,7 @@ class SplitPageDataset(data.Dataset):
         self.more_true = more_true
         self.keep_identical = keep_identical
         self.transform = string_transform[matching]
+        self.score = score
 
         words = []
         indices = {}
@@ -192,10 +217,7 @@ class SplitPageDataset(data.Dataset):
             else:
                 indexB = self.begin + index % (self.end - self.begin)
             w1, w2 = self.words[indexA], self.words[indexB]
-            if w1 == w2:
-                target = 1
-            else:
-                target = 0
+            target = get_score(w1, w2, type=self.score)
             idA, idB = self.word2id[w1], self.word2id[w2]
         else:
             index -= self.limit
@@ -245,7 +267,8 @@ class CustomDataset(data.Dataset):
                 keep_identical=False,
                 preselect_false=False,
                 remove_hard=False,
-                matching="strict"):
+                matching="strict",
+                score="equal"):
 
         self.root = root
         self.begin = begin
@@ -257,6 +280,7 @@ class CustomDataset(data.Dataset):
         self.preselect_false = preselect_false
         self.remove_hard = remove_hard
         self.transform = string_transform[matching]
+        self.score = score
 
         words = []
         indices = {}
@@ -323,7 +347,7 @@ class CustomDataset(data.Dataset):
     def __getitem__(self, index):
         if index % 2 == 0:
             indexA, indexB = self.true_pairs_id[(index // 2) % len(self.true_pairs_id)]
-            target = 1
+            target = get_score(self.words[indexA], self.words[indexB], type=self.score)
         else:
             if self.preselect_false:
                 indexA, indexB = self.false_pairs_id[index // 2]
@@ -332,7 +356,7 @@ class CustomDataset(data.Dataset):
                 while self.words[indexA] == self.words[indexB] or \
                         (self.remove_hard and normalize_string(self.words[indexA]) == normalize_string(self.words[indexB])):
                     indexA, indexB = np.random.choice(range(self.begin, self.end), replace=False, size=(2,))
-            target = 0
+            target = get_score(self.words[indexA], self.words[indexB], type=self.score)
         w1, w2 = self.words[indexA], self.words[indexB]
         idA, idB = self.word2id[w1], self.word2id[w2]
 
@@ -382,10 +406,7 @@ class ValidationDataset(SplitPageDataset):
         else:
             indexB = self.begin + index % (self.end - self.begin)
         w1, w2 = self.words[indexA], self.words[indexB]
-        if w1 == w2:
-            target = 1
-        else:
-            target = 0
+        target = get_score(w1, w2, type=self.score)
         idA, idB = self.word2id[w1], self.word2id[w2]
         return indexA, indexB, target, idA, idB
 
@@ -419,11 +440,11 @@ class ImagePairLoader(Loader):
         
         sample1, sample2 = self.loader(fname_1), self.loader(fname_2)
 
-        if self.transform_false_before is not None and target == 0:
+        if self.transform_false_before is not None and target <= 0.5:
             sample1 = self.transform_false_before(sample1)
             sample2 = self.transform_false_before(sample2)
 
-        if self.transform_true_before is not None and target == 1:
+        if self.transform_true_before is not None and target >= 0.5:
             sample1 = self.transform_true_before(sample1)
             sample2 = self.transform_true_before(sample2)
 
@@ -431,10 +452,10 @@ class ImagePairLoader(Loader):
         sample2 = transforms.ToTensor()(sample2)
         sample = torch.cat((sample1, sample2), 0)
 
-        if self.transform_false_after is not None and target == 0:
+        if self.transform_false_after is not None and target <= 0.5:
             sample = self.transform_false_after(sample)
 
-        if self.transform_true_after is not None and target == 1:
+        if self.transform_true_after is not None and target >= 0.5:
             sample = self.transform_true_after(sample)
         
         return sample
