@@ -56,9 +56,12 @@ if __name__ == "__main__":
             x = transforms.Normalize(mean=[MEAN], std=[STD])(x)
             x = torch.cat((x,x,x), 0)
             x = x.unsqueeze(0)
+            if use_cuda:
+                x = x.cuda(args.gpu)
             x = model(x)
             x = x.view(-1)
-
+            if use_cuda:
+                x = x.cpu()
             x = x.numpy()
 
             np.savetxt(

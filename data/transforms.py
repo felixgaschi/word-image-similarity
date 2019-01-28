@@ -1,11 +1,11 @@
-import torchvision.transforms as transforms
-import torch.utils.data as data
-import torch
-from PIL import Image
-import os
-from tqdm import tqdm
-import pickle as pk
-import numpy as np
+import torchvision.transforms as transforms 
+import torch.utils.data as data 
+import torch 
+from PIL import Image 
+import os 
+from tqdm import tqdm 
+import pickle as pk 
+import numpy as np 
 import re
 
 BINARY_MEAN = 0.91
@@ -466,9 +466,10 @@ class FeatureCustomDataset(CustomDataset):
         img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
         x1, x2 = torch.from_numpy(x1), torch.from_numpy(x2)
-        sample = torch.cat((sample1, sample2), 0)
+        sample = torch.cat((x1, x2), 0)
+        sample = sample.float()
 
-        return (sample, target, indices, img_indices)
+        return (sample, target, word_indices, img_indices)
 
 
 class ValidationDataset(SplitPageDataset):
@@ -522,6 +523,7 @@ class FeatureValidationDataset(ValidationDataset):
         img_indices = torch.tensor([indexA, indexB], dtype=torch.int)
 
         x1, x2 = torch.from_numpy(x1), torch.from_numpy(x2)
-        sample = torch.cat((sample1, sample2), 0)
+        sample = torch.cat((x1, x2), 0)
+        sample = sample.float()
 
         return (sample, target, indices, img_indices)
